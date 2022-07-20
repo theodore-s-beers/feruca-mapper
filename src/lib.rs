@@ -4,8 +4,8 @@
 use feruca::KeysSource;
 use once_cell::sync::{Lazy, OnceCell};
 use regex::Regex;
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use tinyvec::ArrayVec;
 use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
 
@@ -21,9 +21,9 @@ struct Weights {
 }
 
 // The output of map_decomps is then needed for map_fcd
-static DECOMP: Lazy<HashMap<u32, Vec<u32>>> = Lazy::new(|| {
+static DECOMP: Lazy<FxHashMap<u32, Vec<u32>>> = Lazy::new(|| {
     let data = std::fs::read("bincode/decomp").unwrap();
-    let decoded: HashMap<u32, Vec<u32>> = bincode::deserialize(&data).unwrap();
+    let decoded: FxHashMap<u32, Vec<u32>> = bincode::deserialize(&data).unwrap();
     decoded
 });
 
@@ -37,7 +37,7 @@ macro_rules! regex {
 pub fn map_decomps() {
     let data = std::fs::read_to_string("unicode-data/UnicodeData.txt").unwrap();
 
-    let mut map: HashMap<u32, Vec<u32>> = HashMap::new();
+    let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() {
@@ -158,7 +158,7 @@ fn get_canonical_decomp(code_point: &str) -> Vec<u32> {
 pub fn map_fcd() {
     let data = std::fs::read_to_string("unicode-data/UnicodeData.txt").unwrap();
 
-    let mut map: HashMap<u32, u16> = HashMap::new();
+    let mut map: FxHashMap<u32, u16> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() {
@@ -221,7 +221,7 @@ pub fn map_keys_low(keys: KeysSource) {
     let re_set_of_weights = regex!(r"[*.\dA-F]{15}");
     let re_individual_weight = regex!(r"[\dA-F]{4}");
 
-    let mut map: HashMap<u32, Weights> = HashMap::new();
+    let mut map: FxHashMap<u32, Weights> = FxHashMap::default();
 
     // This is for code points under 183 (decimal)
     for i in 0..183 {
@@ -279,7 +279,7 @@ pub fn map_keys_multi(keys: KeysSource) {
 
     let data = std::fs::read_to_string(path_in).unwrap();
 
-    let mut map: HashMap<ArrayVec<[u32; 3]>, Vec<Weights>> = HashMap::new();
+    let mut map: FxHashMap<ArrayVec<[u32; 3]>, Vec<Weights>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
@@ -351,7 +351,7 @@ pub fn map_keys_sing(keys: KeysSource) {
 
     let data = std::fs::read_to_string(path_in).unwrap();
 
-    let mut map: HashMap<u32, Vec<Weights>> = HashMap::new();
+    let mut map: FxHashMap<u32, Vec<Weights>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
