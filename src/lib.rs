@@ -4,7 +4,7 @@
 use feruca::KeysSource;
 use once_cell::sync::{Lazy, OnceCell};
 use regex::Regex;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 use tinyvec::ArrayVec;
 use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
@@ -207,7 +207,7 @@ pub fn map_fcd() {
     std::fs::write("bincode/fcd", bytes).unwrap();
 }
 
-pub fn map_keys_low(keys: KeysSource) {
+pub fn map_low(keys: KeysSource) {
     let cldr = keys == KeysSource::Cldr;
 
     let path_in = if cldr {
@@ -268,7 +268,7 @@ pub fn map_keys_low(keys: KeysSource) {
     std::fs::write(path_out, bytes).unwrap();
 }
 
-pub fn map_keys_multi(keys: KeysSource) {
+pub fn map_multi(keys: KeysSource) {
     let cldr = keys == KeysSource::Cldr;
 
     let path_in = if cldr {
@@ -340,7 +340,7 @@ pub fn map_keys_multi(keys: KeysSource) {
     std::fs::write(path_out, bytes).unwrap();
 }
 
-pub fn map_keys_sing(keys: KeysSource) {
+pub fn map_sing(keys: KeysSource) {
     let cldr = keys == KeysSource::Cldr;
 
     let path_in = if cldr {
@@ -412,4 +412,60 @@ pub fn map_keys_sing(keys: KeysSource) {
 
     let bytes = bincode::serialize(&map).unwrap();
     std::fs::write(path_out, bytes).unwrap();
+}
+
+pub fn map_variable() {
+    let mut set: FxHashSet<u32> = FxHashSet::default();
+
+    // We only need to use DUCET for this, since (as far as I can tell from testing) every code
+    // point in the CLDR table that has a variable weight or a zero primary weight, also has that
+    // in DUCET. But the inverse is not true.
+    let data = std::fs::read_to_string("unicode-data/allkeys.txt").unwrap();
+
+    'outer: for line in data.lines() {
+        if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
+            continue;
+        }
+
+        let mut split_at_semicolon = line.split(';');
+        let left_of_semicolon = split_at_semicolon.next().unwrap();
+        let right_of_semicolon = split_at_semicolon.next().unwrap();
+        let left_of_hash = right_of_semicolon.split('#').next().unwrap();
+
+        let mut points = ArrayVec::<[u32; 3]>::new();
+        let re_key = regex!(r"[\dA-F]{4,5}");
+        for m in re_key.find_iter(left_of_semicolon) {
+            let as_u32 = u32::from_str_radix(m.as_str(), 16).unwrap();
+            points.push(as_u32);
+        }
+
+        // Here we're only looking for single-code-point lines
+        if points.len() > 1 {
+            continue;
+        }
+
+        let k = points[0];
+
+        let re_weights = regex!(r"[*.\dA-F]{15}");
+        let re_value = regex!(r"[\dA-F]{4}");
+
+        for m in re_weights.find_iter(left_of_hash) {
+            let weights_str = m.as_str();
+
+            let variable = weights_str.starts_with('*');
+
+            let mut vals = re_value.find_iter(weights_str);
+            let primary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+
+            // We're only interested in code points for which there is a variable weight or a zero
+            // primary weight.
+            if variable || primary == 0 {
+                set.insert(k);
+                continue 'outer;
+            }
+        }
+    }
+
+    let bytes = bincode::serialize(&set).unwrap();
+    std::fs::write("bincode/variable", bytes).unwrap();
 }
