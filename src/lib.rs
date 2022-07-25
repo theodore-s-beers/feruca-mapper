@@ -1,6 +1,3 @@
-#![warn(clippy::pedantic)]
-#![allow(clippy::missing_panics_doc)]
-
 use feruca::KeysSource;
 use once_cell::sync::{Lazy, OnceCell};
 use regex::Regex;
@@ -13,14 +10,14 @@ use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_
 #[derive(
     Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
 )]
-struct Weights {
-    variable: bool,
-    primary: u16,
-    secondary: u16,
-    tertiary: u16,
+pub struct Weights {
+    pub variable: bool,
+    pub primary: u16,
+    pub secondary: u16,
+    pub tertiary: u16,
 }
 
-// The output of map_decomps is then needed for map_fcd
+// The output of map_decomps is needed for map_fcd
 static DECOMP: Lazy<FxHashMap<u32, Vec<u32>>> = Lazy::new(|| {
     let data = std::fs::read("bincode/decomp").unwrap();
     let decoded: FxHashMap<u32, Vec<u32>> = bincode::deserialize(&data).unwrap();
