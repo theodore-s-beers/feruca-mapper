@@ -1,4 +1,4 @@
-use feruca::KeysSource;
+use feruca::Tailoring;
 use once_cell::sync::{Lazy, OnceCell};
 use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -204,8 +204,8 @@ pub fn map_fcd() {
     std::fs::write("bincode/fcd", bytes).unwrap();
 }
 
-pub fn map_low(keys: KeysSource) {
-    let cldr = keys == KeysSource::Cldr;
+pub fn map_low(keys: Tailoring) {
+    let cldr = keys != Tailoring::Ducet;
 
     let path_in = if cldr {
         "unicode-data/allkeys_CLDR.txt"
@@ -265,8 +265,8 @@ pub fn map_low(keys: KeysSource) {
     std::fs::write(path_out, bytes).unwrap();
 }
 
-pub fn map_multi(keys: KeysSource) {
-    let cldr = keys == KeysSource::Cldr;
+pub fn map_multi(keys: Tailoring) {
+    let cldr = keys != Tailoring::Ducet;
 
     let path_in = if cldr {
         "unicode-data/allkeys_CLDR.txt"
@@ -337,8 +337,8 @@ pub fn map_multi(keys: KeysSource) {
     std::fs::write(path_out, bytes).unwrap();
 }
 
-pub fn map_sing(keys: KeysSource) {
-    let cldr = keys == KeysSource::Cldr;
+pub fn map_sing(keys: Tailoring) {
+    let cldr = keys != Tailoring::Ducet;
 
     let path_in = if cldr {
         "unicode-data/allkeys_CLDR.txt"
