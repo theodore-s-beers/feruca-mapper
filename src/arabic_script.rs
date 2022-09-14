@@ -13,7 +13,7 @@ macro_rules! regex {
 
 pub fn map_arabic_script_multi() {
     // This is based on the CLDR table, of course
-    let data = std::fs::read_to_string("unicode-data/allkeys_CLDR.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/15/allkeys_CLDR.txt").unwrap();
 
     let mut map: FxHashMap<ArrayVec<[u32; 3]>, Vec<Weights>> = FxHashMap::default();
 
@@ -93,12 +93,12 @@ pub fn map_arabic_script_multi() {
     }
 
     let bytes = bincode::serialize(&map).unwrap();
-    std::fs::write("bincode/tailoring/arabic_script_multi", bytes).unwrap();
+    std::fs::write("bincode/15/tailoring/arabic_script_multi", bytes).unwrap();
 }
 
 pub fn map_arabic_script_sing() {
     // This is based on the CLDR table, of course
-    let data = std::fs::read_to_string("unicode-data/allkeys_CLDR.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/15/allkeys_CLDR.txt").unwrap();
 
     let mut map: FxHashMap<u32, Vec<Weights>> = FxHashMap::default();
 
@@ -180,5 +180,5 @@ pub fn map_arabic_script_sing() {
     }
 
     let bytes = bincode::serialize(&map).unwrap();
-    std::fs::write("bincode/tailoring/arabic_script_sing", bytes).unwrap();
+    std::fs::write("bincode/15/tailoring/arabic_script_sing", bytes).unwrap();
 }

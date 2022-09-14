@@ -19,7 +19,7 @@ pub struct Weights {
 
 // The output of map_decomps is needed for map_fcd
 static DECOMP: Lazy<FxHashMap<u32, Vec<u32>>> = Lazy::new(|| {
-    let data = std::fs::read("bincode/decomp").unwrap();
+    let data = std::fs::read("bincode/15/decomp").unwrap();
     let decoded: FxHashMap<u32, Vec<u32>> = bincode::deserialize(&data).unwrap();
     decoded
 });
@@ -32,7 +32,7 @@ macro_rules! regex {
 }
 
 pub fn map_decomps() {
-    let data = std::fs::read_to_string("unicode-data/UnicodeData.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/15/UnicodeData.txt").unwrap();
 
     let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
 
@@ -101,11 +101,11 @@ pub fn map_decomps() {
     }
 
     let bytes = bincode::serialize(&map).unwrap();
-    std::fs::write("bincode/decomp", bytes).unwrap();
+    std::fs::write("bincode/15/decomp", bytes).unwrap();
 }
 
 fn get_canonical_decomp(code_point: &str) -> Vec<u32> {
-    let data = std::fs::read_to_string("unicode-data/UnicodeData.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/15/UnicodeData.txt").unwrap();
 
     for line in data.lines() {
         if line.starts_with(code_point) {
@@ -153,7 +153,7 @@ fn get_canonical_decomp(code_point: &str) -> Vec<u32> {
 }
 
 pub fn map_fcd() {
-    let data = std::fs::read_to_string("unicode-data/UnicodeData.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/15/UnicodeData.txt").unwrap();
 
     let mut map: FxHashMap<u32, u16> = FxHashMap::default();
 
@@ -201,16 +201,16 @@ pub fn map_fcd() {
     }
 
     let bytes = bincode::serialize(&map).unwrap();
-    std::fs::write("bincode/fcd", bytes).unwrap();
+    std::fs::write("bincode/15/fcd", bytes).unwrap();
 }
 
 pub fn map_low(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
     let path_in = if cldr {
-        "unicode-data/allkeys_CLDR.txt"
+        "unicode-data/15/allkeys_CLDR.txt"
     } else {
-        "unicode-data/allkeys.txt"
+        "unicode-data/15/allkeys.txt"
     };
 
     let data = std::fs::read_to_string(path_in).unwrap();
@@ -256,9 +256,9 @@ pub fn map_low(keys: Tailoring) {
     }
 
     let path_out = if cldr {
-        "bincode/low_cldr"
+        "bincode/15/low_cldr"
     } else {
-        "bincode/low"
+        "bincode/15/low"
     };
 
     let bytes = bincode::serialize(&map).unwrap();
@@ -269,9 +269,9 @@ pub fn map_multi(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
     let path_in = if cldr {
-        "unicode-data/allkeys_CLDR.txt"
+        "unicode-data/15/allkeys_CLDR.txt"
     } else {
-        "unicode-data/allkeys.txt"
+        "unicode-data/15/allkeys.txt"
     };
 
     let data = std::fs::read_to_string(path_in).unwrap();
@@ -328,9 +328,9 @@ pub fn map_multi(keys: Tailoring) {
     }
 
     let path_out = if cldr {
-        "bincode/multis_cldr"
+        "bincode/15/multis_cldr"
     } else {
-        "bincode/multis"
+        "bincode/15/multis"
     };
 
     let bytes = bincode::serialize(&map).unwrap();
@@ -341,9 +341,9 @@ pub fn map_sing(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
     let path_in = if cldr {
-        "unicode-data/allkeys_CLDR.txt"
+        "unicode-data/15/allkeys_CLDR.txt"
     } else {
-        "unicode-data/allkeys.txt"
+        "unicode-data/15/allkeys.txt"
     };
 
     let data = std::fs::read_to_string(path_in).unwrap();
@@ -402,9 +402,9 @@ pub fn map_sing(keys: Tailoring) {
     }
 
     let path_out = if cldr {
-        "bincode/singles_cldr"
+        "bincode/15/singles_cldr"
     } else {
-        "bincode/singles"
+        "bincode/15/singles"
     };
 
     let bytes = bincode::serialize(&map).unwrap();
@@ -417,7 +417,7 @@ pub fn map_variable() {
     // We only need to use DUCET for this, since (as far as I can tell from testing) every code
     // point in the CLDR table that has a variable weight or a zero primary weight, also has that
     // in DUCET. But the inverse is not true.
-    let data = std::fs::read_to_string("unicode-data/allkeys.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/15/allkeys.txt").unwrap();
 
     'outer: for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
@@ -464,5 +464,5 @@ pub fn map_variable() {
     }
 
     let bytes = bincode::serialize(&set).unwrap();
-    std::fs::write("bincode/variable", bytes).unwrap();
+    std::fs::write("bincode/15/variable", bytes).unwrap();
 }
