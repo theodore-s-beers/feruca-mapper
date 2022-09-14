@@ -11,6 +11,10 @@ macro_rules! regex {
     }};
 }
 
+const FIRST_ARABIC: u16 = 10_136;
+const LAST_ARABIC: u16 = 10_371;
+const OFFSET: u16 = 2_010;
+
 pub fn map_arabic_script_multi() {
     // This is based on the CLDR table, of course
     let data = std::fs::read_to_string("unicode-data/15/allkeys_CLDR.txt").unwrap();
@@ -70,7 +74,7 @@ pub fn map_arabic_script_multi() {
         let mut arabic = false;
 
         for weights in &v {
-            if weights.primary >= 10_068 && weights.primary <= 10_303 {
+            if weights.primary >= FIRST_ARABIC && weights.primary <= LAST_ARABIC {
                 arabic = true;
                 break;
             }
@@ -84,8 +88,8 @@ pub fn map_arabic_script_multi() {
         // space before the Latin script.
 
         for weights in &mut v {
-            if weights.primary >= 10_068 && weights.primary <= 10_303 {
-                weights.primary -= 2_010;
+            if weights.primary >= FIRST_ARABIC && weights.primary <= LAST_ARABIC {
+                weights.primary -= OFFSET;
             }
         }
 
@@ -157,7 +161,7 @@ pub fn map_arabic_script_sing() {
         let mut arabic = false;
 
         for weights in &v {
-            if weights.primary >= 10_068 && weights.primary <= 10_303 {
+            if weights.primary >= FIRST_ARABIC && weights.primary <= LAST_ARABIC {
                 arabic = true;
                 break;
             }
@@ -171,8 +175,8 @@ pub fn map_arabic_script_sing() {
         // space before the Latin script.
 
         for weights in &mut v {
-            if weights.primary >= 10_068 && weights.primary <= 10_303 {
-                weights.primary -= 2_010;
+            if weights.primary >= FIRST_ARABIC && weights.primary <= LAST_ARABIC {
+                weights.primary -= OFFSET;
             }
         }
 
@@ -181,4 +185,18 @@ pub fn map_arabic_script_sing() {
 
     let bytes = bincode::serialize(&map).unwrap();
     std::fs::write("bincode/15/tailoring/arabic_script_sing", bytes).unwrap();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const LAST_BEFORE_LATIN: u16 = 8_115;
+    const FIRST_LATIN: u16 = 8_371;
+
+    #[test]
+    fn verify_offset() {
+        assert!((FIRST_ARABIC - OFFSET) > LAST_BEFORE_LATIN);
+        assert!((LAST_ARABIC - OFFSET) < FIRST_LATIN);
+    }
 }
