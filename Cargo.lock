@@ -51,9 +51,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "feruca"
-version = "0.5.2"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "228f2e2c1e1309f42387afd563f6293aaa73ca2678ef8fa7ccf13c70c923f414"
+checksum = "ffe21df2cd15269ae185cf4e8043f85ac34e9f4e78fd05929aabab0190f6045f"
 dependencies = [
  "bincode",
  "bstr",
@@ -101,15 +101,15 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.132"
+version = "0.2.133"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8371e4e5341c3a96db127eb2465ac681ced4c433e01dd0e938adbef26ba93ba5"
+checksum = "c0f80d65747a3e43d1596c7c5492d95d5edddaabd45a7fcdb02b95f644164966"
 
 [[package]]
 name = "lru"
-version = "0.7.8"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e999beba7b6e8345721bd280141ed958096a2e4abdf74f67ff4ce49b4b54e47a"
+checksum = "936d98d2ddd79c18641c6709e7bb09981449694e402d1a0f0f657ea8d61f4a51"
 dependencies = [
  "hashbrown",
 ]
@@ -195,9 +195,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.99"
+version = "1.0.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58dbef6ec655055e20b86b15a8cc6d439cca19b667537ac6a1369572d151ab13"
+checksum = "52205623b1b0f064a4e71182c3b18ae902267282930c6d5462c91b859668426e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -215,9 +215,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-canonical-combining-class"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aace084c716ab9bd788879326a7a6f12aea476bf895d8b1938fb9983867fa603"
+checksum = "6925586af9268182c711e47c0853ed84131049efaca41776d0ca97f983865c32"
 
 [[package]]
 name = "unicode-ident"
