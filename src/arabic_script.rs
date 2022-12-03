@@ -189,6 +189,8 @@ pub fn map_arabic_script_sing() {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::assertions_on_constants)]
+
     use super::*;
 
     const LAST_BEFORE_LATIN: u16 = 8_115;

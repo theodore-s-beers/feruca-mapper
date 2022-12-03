@@ -85,7 +85,7 @@ pub fn map_decomps() {
             decomp
                 .into_iter()
                 .flat_map(|c| {
-                    let as_str = format!("{:04X}", c);
+                    let as_str = format!("{c:04X}");
                     get_canonical_decomp(&as_str)
                 })
                 .collect()
@@ -130,7 +130,7 @@ fn get_canonical_decomp(code_point: &str) -> Vec<u32> {
                 return decomp
                     .into_iter()
                     .flat_map(|c| {
-                        let as_str = format!("{:04X}", c);
+                        let as_str = format!("{c:04X}");
                         get_canonical_decomp(&as_str)
                     })
                     .collect();
@@ -227,7 +227,7 @@ pub fn map_low(keys: Tailoring) {
             continue;
         }
 
-        let as_hex = format!("{:04X}", i);
+        let as_hex = format!("{i:04X}");
 
         // Find the line. Yeah, this is slow, but whatever.
         for line in data.lines() {
