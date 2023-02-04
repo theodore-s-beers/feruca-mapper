@@ -2,7 +2,6 @@ use feruca_mapper::Weights;
 use once_cell::sync::OnceCell;
 use regex::Regex;
 use rustc_hash::FxHashMap;
-use tinyvec::ArrayVec;
 
 macro_rules! regex {
     ($re:literal $(,)?) => {{
@@ -19,7 +18,7 @@ pub fn map_arabic_script_multi() {
     // This is based on the CLDR table, of course
     let data = std::fs::read_to_string("unicode-data/15/allkeys_CLDR.txt").unwrap();
 
-    let mut map: FxHashMap<ArrayVec<[u32; 3]>, Vec<Weights>> = FxHashMap::default();
+    let mut map: FxHashMap<Vec<u32>, Vec<Weights>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
@@ -31,7 +30,7 @@ pub fn map_arabic_script_multi() {
         let right_of_semicolon = split_at_semicolon.next().unwrap();
         let left_of_hash = right_of_semicolon.split('#').next().unwrap();
 
-        let mut k = ArrayVec::<[u32; 3]>::new();
+        let mut k = Vec::new();
         let re_key = regex!(r"[\dA-F]{4,5}");
         for m in re_key.find_iter(left_of_semicolon) {
             let as_u32 = u32::from_str_radix(m.as_str(), 16).unwrap();
@@ -62,6 +61,7 @@ pub fn map_arabic_script_multi() {
                 primary,
                 secondary,
                 tertiary,
+                quaternary: 0,
             };
 
             v.push(weights);
@@ -116,7 +116,7 @@ pub fn map_arabic_script_sing() {
         let right_of_semicolon = split_at_semicolon.next().unwrap();
         let left_of_hash = right_of_semicolon.split('#').next().unwrap();
 
-        let mut points = ArrayVec::<[u32; 3]>::new();
+        let mut points = Vec::new();
         let re_key = regex!(r"[\dA-F]{4,5}");
         for m in re_key.find_iter(left_of_semicolon) {
             let as_u32 = u32::from_str_radix(m.as_str(), 16).unwrap();
@@ -149,6 +149,7 @@ pub fn map_arabic_script_sing() {
                 primary,
                 secondary,
                 tertiary,
+                quaternary: 0,
             };
 
             v.push(weights);

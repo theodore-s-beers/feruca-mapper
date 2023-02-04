@@ -74,7 +74,6 @@ dependencies = [
  "regex",
  "rustc-hash",
  "serde",
- "tinyvec",
  "unicode-canonical-combining-class",
 ]
 

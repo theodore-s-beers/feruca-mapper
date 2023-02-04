@@ -3,7 +3,6 @@ use once_cell::sync::{Lazy, OnceCell};
 use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
-use tinyvec::ArrayVec;
 use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
 
 // We need this struct from feruca, but I don't want to make it public there
@@ -15,6 +14,7 @@ pub struct Weights {
     pub primary: u16,
     pub secondary: u16,
     pub tertiary: u16,
+    pub quaternary: u16,
 }
 
 // The output of map_decomps is needed for map_fcd
@@ -246,6 +246,7 @@ pub fn map_low(keys: Tailoring) {
                     primary,
                     secondary,
                     tertiary,
+                    quaternary: 0,
                 };
 
                 map.insert(i, together);
@@ -276,7 +277,7 @@ pub fn map_multi(keys: Tailoring) {
 
     let data = std::fs::read_to_string(path_in).unwrap();
 
-    let mut map: FxHashMap<ArrayVec<[u32; 3]>, Vec<Weights>> = FxHashMap::default();
+    let mut map: FxHashMap<Vec<u32>, Vec<Weights>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
@@ -288,7 +289,7 @@ pub fn map_multi(keys: Tailoring) {
         let right_of_semicolon = split_at_semicolon.next().unwrap();
         let left_of_hash = right_of_semicolon.split('#').next().unwrap();
 
-        let mut k = ArrayVec::<[u32; 3]>::new();
+        let mut k = Vec::new();
         let re_key = regex!(r"[\dA-F]{4,5}");
         for m in re_key.find_iter(left_of_semicolon) {
             let as_u32 = u32::from_str_radix(m.as_str(), 16).unwrap();
@@ -319,6 +320,7 @@ pub fn map_multi(keys: Tailoring) {
                 primary,
                 secondary,
                 tertiary,
+                quaternary: 0,
             };
 
             v.push(weights);
@@ -360,7 +362,7 @@ pub fn map_sing(keys: Tailoring) {
         let right_of_semicolon = split_at_semicolon.next().unwrap();
         let left_of_hash = right_of_semicolon.split('#').next().unwrap();
 
-        let mut points = ArrayVec::<[u32; 3]>::new();
+        let mut points = Vec::new();
         let re_key = regex!(r"[\dA-F]{4,5}");
         for m in re_key.find_iter(left_of_semicolon) {
             let as_u32 = u32::from_str_radix(m.as_str(), 16).unwrap();
@@ -393,6 +395,7 @@ pub fn map_sing(keys: Tailoring) {
                 primary,
                 secondary,
                 tertiary,
+                quaternary: 0,
             };
 
             v.push(weights);
@@ -429,7 +432,7 @@ pub fn map_variable() {
         let right_of_semicolon = split_at_semicolon.next().unwrap();
         let left_of_hash = right_of_semicolon.split('#').next().unwrap();
 
-        let mut points = ArrayVec::<[u32; 3]>::new();
+        let mut points = Vec::new();
         let re_key = regex!(r"[\dA-F]{4,5}");
         for m in re_key.find_iter(left_of_semicolon) {
             let as_u32 = u32::from_str_radix(m.as_str(), 16).unwrap();
