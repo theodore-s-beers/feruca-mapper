@@ -34,8 +34,8 @@ dependencies = [
 
 [[package]]
 name = "feruca"
-version = "0.6.0"
-source = "git+https://github.com/theodore-s-beers/feruca#f8685aebda5bed743396fe8e17da24bef5d55b72"
+version = "0.7.0"
+source = "git+https://github.com/theodore-s-beers/feruca#4b82721f05e8693e40c27fffa1a3749a544cf0c6"
 dependencies = [
  "bincode",
  "bstr",
@@ -72,9 +72,9 @@ checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.50"
+version = "1.0.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ef7d57beacfaf2d8aee5937dab7b7f28de3cb8b1828479bb5de2a7106f2bae2"
+checksum = "5d727cae5b39d21da60fa540906919ad737832fe0b1c165da3a34d6548c849d6"
 dependencies = [
  "unicode-ident",
 ]
