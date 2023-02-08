@@ -14,7 +14,7 @@ pub struct Weights {
     pub primary: u16,
     pub secondary: u16,
     pub tertiary: u16,
-    pub quaternary: u16,
+    pub quaternary: Option<u16>,
 }
 
 // The output of map_decomps is needed for map_fcd
@@ -246,7 +246,7 @@ pub fn map_low(keys: Tailoring) {
                     primary,
                     secondary,
                     tertiary,
-                    quaternary: 0,
+                    quaternary: None,
                 };
 
                 map.insert(i, together);
@@ -320,7 +320,7 @@ pub fn map_multi(keys: Tailoring) {
                 primary,
                 secondary,
                 tertiary,
-                quaternary: 0,
+                quaternary: None,
             };
 
             v.push(weights);
@@ -395,7 +395,7 @@ pub fn map_sing(keys: Tailoring) {
                 primary,
                 secondary,
                 tertiary,
-                quaternary: 0,
+                quaternary: None,
             };
 
             v.push(weights);

@@ -61,7 +61,7 @@ pub fn map_arabic_script_multi() {
                 primary,
                 secondary,
                 tertiary,
-                quaternary: 0,
+                quaternary: None,
             };
 
             v.push(weights);
@@ -149,7 +149,7 @@ pub fn map_arabic_script_sing() {
                 primary,
                 secondary,
                 tertiary,
-                quaternary: 0,
+                quaternary: None,
             };
 
             v.push(weights);
