@@ -35,7 +35,7 @@ dependencies = [
 [[package]]
 name = "feruca"
 version = "0.7.0"
-source = "git+https://github.com/theodore-s-beers/feruca#4b82721f05e8693e40c27fffa1a3749a544cf0c6"
+source = "git+https://github.com/theodore-s-beers/feruca#ffcd5829a593b04e87604ebe672b05b1069bc5c3"
 dependencies = [
  "bincode",
  "bstr",
@@ -54,7 +54,6 @@ dependencies = [
  "once_cell",
  "regex",
  "rustc-hash",
- "serde",
  "unicode-canonical-combining-class",
 ]
 

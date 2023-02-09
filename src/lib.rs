@@ -2,15 +2,10 @@ use feruca::Tailoring;
 use once_cell::sync::{Lazy, OnceCell};
 use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
-use serde::Serialize;
 use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
 
-// This struct is also defined in feruca, but I don't want to make it public there
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Default, Serialize)]
-pub struct PackedWeights {
-    pub variable: bool,
-    pub values: u32,
-}
+pub const SEC_MAX: u16 = 511;
+pub const TER_MAX: u16 = 63;
 
 // The output of map_decomps is needed for map_fcd
 static DECOMP: Lazy<FxHashMap<u32, Vec<u32>>> = Lazy::new(|| {
@@ -73,8 +68,7 @@ pub fn map_decomps() {
         }
 
         let final_decomp = if decomp_col.contains('<') {
-            // Non-canonical decomposition; continue
-            continue;
+            continue; // Non-canonical decomposition; continue
         } else if decomp.len() > 1 {
             // Multi-code-point canonical decomposition; recurse badly
             decomp
@@ -88,8 +82,7 @@ pub fn map_decomps() {
             // Single-code-point canonical decomposition; recurse simply
             get_canonical_decomp(splits[0])
         } else {
-            // No decomposition; continue
-            continue;
+            continue; // No decomposition; continue
         };
 
         map.insert(code_point, final_decomp);
@@ -213,7 +206,7 @@ pub fn map_low(keys: Tailoring) {
     let re_set_of_weights = regex!(r"[*.\dA-F]{15}");
     let re_individual_weight = regex!(r"[\dA-F]{4}");
 
-    let mut map: FxHashMap<u32, PackedWeights> = FxHashMap::default();
+    let mut map: FxHashMap<u32, u32> = FxHashMap::default();
 
     // This is for code points under 183 (decimal)
     for i in 0..183 {
@@ -232,19 +225,18 @@ pub fn map_low(keys: Tailoring) {
                 let variable = set.starts_with('*');
 
                 let mut weights = re_individual_weight.find_iter(set);
+
                 let primary = u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
+
                 let secondary = u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
+                assert!(secondary <= SEC_MAX);
+
                 let tertiary = u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
+                assert!(tertiary <= TER_MAX);
 
-                let lower = tertiary << 10 | secondary;
-                let packed = ((primary as u32) << 16) | lower as u32;
+                let packed = pack_weights(variable, primary, secondary, tertiary);
 
-                let together = PackedWeights {
-                    variable,
-                    values: packed,
-                };
-
-                map.insert(i, together);
+                map.insert(i, packed);
 
                 break;
             }
@@ -272,7 +264,7 @@ pub fn map_multi(keys: Tailoring) {
 
     let data = std::fs::read_to_string(path_in).unwrap();
 
-    let mut map: FxHashMap<Vec<u32>, Vec<PackedWeights>> = FxHashMap::default();
+    let mut map: FxHashMap<Vec<u32>, Vec<u32>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
@@ -296,7 +288,7 @@ pub fn map_multi(keys: Tailoring) {
             continue;
         }
 
-        let mut v: Vec<PackedWeights> = Vec::new();
+        let mut v: Vec<u32> = Vec::new();
         let re_weights = regex!(r"[*.\dA-F]{15}");
         let re_value = regex!(r"[\dA-F]{4}");
 
@@ -306,17 +298,20 @@ pub fn map_multi(keys: Tailoring) {
             let variable = weights_str.starts_with('*');
 
             let mut vals = re_value.find_iter(weights_str);
+
             let primary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+
             let secondary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+            assert!(secondary <= SEC_MAX);
+
             let tertiary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+            assert!(tertiary <= TER_MAX);
 
-            let lower = tertiary << 10 | secondary;
-            let packed = ((primary as u32) << 16) | lower as u32;
-
-            let weights = PackedWeights {
-                variable,
-                values: packed,
-            };
+            let weights = pack_weights(variable, primary, secondary, tertiary);
+            assert_eq!(
+                unpack_weights(weights),
+                (variable, primary, secondary, tertiary)
+            );
 
             v.push(weights);
         }
@@ -345,7 +340,7 @@ pub fn map_sing(keys: Tailoring) {
 
     let data = std::fs::read_to_string(path_in).unwrap();
 
-    let mut map: FxHashMap<u32, Vec<PackedWeights>> = FxHashMap::default();
+    let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
@@ -371,7 +366,7 @@ pub fn map_sing(keys: Tailoring) {
 
         let k = points[0];
 
-        let mut v: Vec<PackedWeights> = Vec::new();
+        let mut v: Vec<u32> = Vec::new();
         let re_weights = regex!(r"[*.\dA-F]{15}");
         let re_value = regex!(r"[\dA-F]{4}");
 
@@ -381,17 +376,16 @@ pub fn map_sing(keys: Tailoring) {
             let variable = weights_str.starts_with('*');
 
             let mut vals = re_value.find_iter(weights_str);
+
             let primary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+
             let secondary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+            assert!(secondary <= SEC_MAX);
+
             let tertiary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+            assert!(tertiary <= TER_MAX);
 
-            let lower = tertiary << 10 | secondary;
-            let packed = ((primary as u32) << 16) | lower as u32;
-
-            let weights = PackedWeights {
-                variable,
-                values: packed,
-            };
+            let weights = pack_weights(variable, primary, secondary, tertiary);
 
             v.push(weights);
         }
@@ -463,4 +457,24 @@ pub fn map_variable() {
 
     let bytes = bincode::serialize(&set).unwrap();
     std::fs::write("bincode/15/variable", bytes).unwrap();
+}
+
+pub fn pack_weights(variable: bool, primary: u16, secondary: u16, tertiary: u16) -> u32 {
+    let upper = (primary as u32) << 16;
+
+    let v_int: u16 = if variable { 1 } else { 0 };
+    let lower = (v_int << 15 | tertiary << 9) | secondary;
+
+    upper | lower as u32
+}
+
+pub fn unpack_weights(packed: u32) -> (bool, u16, u16, u16) {
+    let primary = (packed >> 16) as u16;
+
+    let lower = (packed & 0xFFFF) as u16;
+    let variable = lower >> 15 == 1;
+    let secondary = lower & 0b1_1111_1111;
+    let tertiary = (lower >> 9) & 0b11_1111;
+
+    (variable, primary, secondary, tertiary)
 }

@@ -1,4 +1,4 @@
-use feruca_mapper::PackedWeights;
+use feruca_mapper::{pack_weights, unpack_weights};
 use once_cell::sync::OnceCell;
 use regex::Regex;
 use rustc_hash::FxHashMap;
@@ -18,7 +18,7 @@ pub fn map_arabic_script_multi() {
     // This is based on the CLDR table, of course
     let data = std::fs::read_to_string("unicode-data/15/allkeys_CLDR.txt").unwrap();
 
-    let mut map: FxHashMap<Vec<u32>, Vec<PackedWeights>> = FxHashMap::default();
+    let mut map: FxHashMap<Vec<u32>, Vec<u32>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
@@ -42,7 +42,7 @@ pub fn map_arabic_script_multi() {
             continue;
         }
 
-        let mut v: Vec<PackedWeights> = Vec::new();
+        let mut v: Vec<u32> = Vec::new();
         let re_weights = regex!(r"[*.\dA-F]{15}");
         let re_value = regex!(r"[\dA-F]{4}");
 
@@ -52,17 +52,12 @@ pub fn map_arabic_script_multi() {
             let variable = weights_str.starts_with('*');
 
             let mut vals = re_value.find_iter(weights_str);
+
             let primary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
             let secondary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
             let tertiary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
 
-            let lower = tertiary << 10 | secondary;
-            let packed = (u32::from(primary) << 16) | u32::from(lower);
-
-            let weights = PackedWeights {
-                variable,
-                values: packed,
-            };
+            let weights = pack_weights(variable, primary, secondary, tertiary);
 
             v.push(weights);
         }
@@ -74,7 +69,7 @@ pub fn map_arabic_script_multi() {
         let mut arabic = false;
 
         for weights in &v {
-            let primary = (weights.values >> 16) as u16;
+            let (_, primary, _, _) = unpack_weights(*weights);
 
             if (FIRST_ARABIC..=LAST_ARABIC).contains(&primary) {
                 arabic = true;
@@ -90,13 +85,11 @@ pub fn map_arabic_script_multi() {
         // space before the Latin script.
 
         for weights in &mut v {
-            let primary = (weights.values >> 16) as u16;
+            let (variable, primary, secondary, tertiary) = unpack_weights(*weights);
 
             if (FIRST_ARABIC..=LAST_ARABIC).contains(&primary) {
                 let new_primary = primary - OFFSET;
-                let lower = (weights.values & 0xFFFF) as u16;
-                let packed = (u32::from(new_primary) << 16) | u32::from(lower);
-                weights.values = packed;
+                *weights = pack_weights(variable, new_primary, secondary, tertiary);
             }
         }
 
@@ -111,7 +104,7 @@ pub fn map_arabic_script_sing() {
     // This is based on the CLDR table, of course
     let data = std::fs::read_to_string("unicode-data/15/allkeys_CLDR.txt").unwrap();
 
-    let mut map: FxHashMap<u32, Vec<PackedWeights>> = FxHashMap::default();
+    let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
@@ -137,7 +130,7 @@ pub fn map_arabic_script_sing() {
 
         let k = points[0];
 
-        let mut v: Vec<PackedWeights> = Vec::new();
+        let mut v: Vec<u32> = Vec::new();
         let re_weights = regex!(r"[*.\dA-F]{15}");
         let re_value = regex!(r"[\dA-F]{4}");
 
@@ -147,17 +140,12 @@ pub fn map_arabic_script_sing() {
             let variable = weights_str.starts_with('*');
 
             let mut vals = re_value.find_iter(weights_str);
+
             let primary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
             let secondary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
             let tertiary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
 
-            let lower = tertiary << 10 | secondary;
-            let packed = (u32::from(primary) << 16) | u32::from(lower);
-
-            let weights = PackedWeights {
-                variable,
-                values: packed,
-            };
+            let weights = pack_weights(variable, primary, secondary, tertiary);
 
             v.push(weights);
         }
@@ -169,7 +157,7 @@ pub fn map_arabic_script_sing() {
         let mut arabic = false;
 
         for weights in &v {
-            let primary = (weights.values >> 16) as u16;
+            let (_, primary, _, _) = unpack_weights(*weights);
 
             if (FIRST_ARABIC..=LAST_ARABIC).contains(&primary) {
                 arabic = true;
@@ -185,13 +173,11 @@ pub fn map_arabic_script_sing() {
         // space before the Latin script.
 
         for weights in &mut v {
-            let primary = (weights.values >> 16) as u16;
+            let (variable, primary, secondary, tertiary) = unpack_weights(*weights);
 
             if (FIRST_ARABIC..=LAST_ARABIC).contains(&primary) {
                 let new_primary = primary - OFFSET;
-                let lower = (weights.values & 0xFFFF) as u16;
-                let packed = (u32::from(new_primary) << 16) | u32::from(lower);
-                weights.values = packed;
+                *weights = pack_weights(variable, new_primary, secondary, tertiary);
             }
         }
 
