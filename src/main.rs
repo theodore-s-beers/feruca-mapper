@@ -1,5 +1,4 @@
 #![warn(clippy::pedantic, clippy::nursery)]
-#![allow(clippy::missing_panics_doc)]
 
 use feruca::Tailoring;
 use feruca_mapper::{map_decomps, map_fcd, map_low, map_multi, map_sing, map_variable};

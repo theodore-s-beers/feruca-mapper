@@ -2,19 +2,14 @@ use feruca::Tailoring;
 use once_cell::sync::{Lazy, OnceCell};
 use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
 
-// We need this struct from feruca, but I don't want to make it public there
-#[derive(
-    Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-)]
-pub struct Weights {
+// This struct is also defined in feruca, but I don't want to make it public there
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Default, Serialize)]
+pub struct PackedWeights {
     pub variable: bool,
-    pub primary: u16,
-    pub secondary: u16,
-    pub tertiary: u16,
-    pub quaternary: Option<u16>,
+    pub values: u32,
 }
 
 // The output of map_decomps is needed for map_fcd
@@ -218,7 +213,7 @@ pub fn map_low(keys: Tailoring) {
     let re_set_of_weights = regex!(r"[*.\dA-F]{15}");
     let re_individual_weight = regex!(r"[\dA-F]{4}");
 
-    let mut map: FxHashMap<u32, Weights> = FxHashMap::default();
+    let mut map: FxHashMap<u32, PackedWeights> = FxHashMap::default();
 
     // This is for code points under 183 (decimal)
     for i in 0..183 {
@@ -241,12 +236,12 @@ pub fn map_low(keys: Tailoring) {
                 let secondary = u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
                 let tertiary = u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
 
-                let together = Weights {
+                let lower = tertiary << 10 | secondary;
+                let packed = ((primary as u32) << 16) | lower as u32;
+
+                let together = PackedWeights {
                     variable,
-                    primary,
-                    secondary,
-                    tertiary,
-                    quaternary: None,
+                    values: packed,
                 };
 
                 map.insert(i, together);
@@ -277,7 +272,7 @@ pub fn map_multi(keys: Tailoring) {
 
     let data = std::fs::read_to_string(path_in).unwrap();
 
-    let mut map: FxHashMap<Vec<u32>, Vec<Weights>> = FxHashMap::default();
+    let mut map: FxHashMap<Vec<u32>, Vec<PackedWeights>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
@@ -301,7 +296,7 @@ pub fn map_multi(keys: Tailoring) {
             continue;
         }
 
-        let mut v: Vec<Weights> = Vec::new();
+        let mut v: Vec<PackedWeights> = Vec::new();
         let re_weights = regex!(r"[*.\dA-F]{15}");
         let re_value = regex!(r"[\dA-F]{4}");
 
@@ -315,12 +310,12 @@ pub fn map_multi(keys: Tailoring) {
             let secondary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
             let tertiary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
 
-            let weights = Weights {
+            let lower = tertiary << 10 | secondary;
+            let packed = ((primary as u32) << 16) | lower as u32;
+
+            let weights = PackedWeights {
                 variable,
-                primary,
-                secondary,
-                tertiary,
-                quaternary: None,
+                values: packed,
             };
 
             v.push(weights);
@@ -350,7 +345,7 @@ pub fn map_sing(keys: Tailoring) {
 
     let data = std::fs::read_to_string(path_in).unwrap();
 
-    let mut map: FxHashMap<u32, Vec<Weights>> = FxHashMap::default();
+    let mut map: FxHashMap<u32, Vec<PackedWeights>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
@@ -376,7 +371,7 @@ pub fn map_sing(keys: Tailoring) {
 
         let k = points[0];
 
-        let mut v: Vec<Weights> = Vec::new();
+        let mut v: Vec<PackedWeights> = Vec::new();
         let re_weights = regex!(r"[*.\dA-F]{15}");
         let re_value = regex!(r"[\dA-F]{4}");
 
@@ -390,12 +385,12 @@ pub fn map_sing(keys: Tailoring) {
             let secondary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
             let tertiary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
 
-            let weights = Weights {
+            let lower = tertiary << 10 | secondary;
+            let packed = ((primary as u32) << 16) | lower as u32;
+
+            let weights = PackedWeights {
                 variable,
-                primary,
-                secondary,
-                tertiary,
-                quaternary: None,
+                values: packed,
             };
 
             v.push(weights);
