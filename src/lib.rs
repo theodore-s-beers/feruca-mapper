@@ -8,11 +8,12 @@ pub const SEC_MAX: u16 = 511;
 pub const TER_MAX: u16 = 63;
 
 // The output of map_decomps is needed for map_fcd
-static DECOMP: Lazy<FxHashMap<u32, Vec<u32>>> = Lazy::new(|| {
-    let data = std::fs::read("bincode/cldr-43/decomp").unwrap();
-    let decoded: FxHashMap<u32, Vec<u32>> = bincode::deserialize(&data).unwrap();
-    decoded
-});
+static DECOMP: Lazy<FxHashMap<u32, Vec<u32>>> =
+    Lazy::new(|| {
+        let data = std::fs::read("bincode/cldr-43/decomp").unwrap();
+        let decoded: FxHashMap<u32, Vec<u32>> = bincode::deserialize(&data).unwrap();
+        decoded
+    });
 
 macro_rules! regex {
     ($re:literal $(,)?) => {{
@@ -195,11 +196,12 @@ pub fn map_fcd() {
 pub fn map_low(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let path_in = if cldr {
-        "unicode-data/cldr-43/allkeys_CLDR.txt"
-    } else {
-        "unicode-data/cldr-43/allkeys.txt"
-    };
+    let path_in =
+        if cldr {
+            "unicode-data/cldr-43/allkeys_CLDR.txt"
+        } else {
+            "unicode-data/cldr-43/allkeys.txt"
+        };
 
     let data = std::fs::read_to_string(path_in).unwrap();
 
@@ -256,11 +258,12 @@ pub fn map_low(keys: Tailoring) {
 pub fn map_multi(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let path_in = if cldr {
-        "unicode-data/cldr-43/allkeys_CLDR.txt"
-    } else {
-        "unicode-data/cldr-43/allkeys.txt"
-    };
+    let path_in =
+        if cldr {
+            "unicode-data/cldr-43/allkeys_CLDR.txt"
+        } else {
+            "unicode-data/cldr-43/allkeys.txt"
+        };
 
     let data = std::fs::read_to_string(path_in).unwrap();
 
@@ -332,11 +335,12 @@ pub fn map_multi(keys: Tailoring) {
 pub fn map_sing(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let path_in = if cldr {
-        "unicode-data/cldr-43/allkeys_CLDR.txt"
-    } else {
-        "unicode-data/cldr-43/allkeys.txt"
-    };
+    let path_in =
+        if cldr {
+            "unicode-data/cldr-43/allkeys_CLDR.txt"
+        } else {
+            "unicode-data/cldr-43/allkeys.txt"
+        };
 
     let data = std::fs::read_to_string(path_in).unwrap();
 
