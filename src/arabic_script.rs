@@ -10,13 +10,13 @@ macro_rules! regex {
     }};
 }
 
-const FIRST_ARABIC: u16 = 10_136;
-const LAST_ARABIC: u16 = 10_371;
-const OFFSET: u16 = 2_010;
+const FIRST_ARABIC_PRIMARY: u16 = 0x278E; // 0621, "ARABIC LETTER HAMZA"
+const LAST_ARABIC_PRIMARY: u16 = 0x2879; // 088E, "ARABIC VERTICAL TAIL"
+const OFFSET: u16 = 2_010; // This is tested below
 
 pub fn map_arabic_script_multi() {
     // This is based on the CLDR table, of course
-    let data = std::fs::read_to_string("unicode-data/cldr-43/allkeys_CLDR.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/cldr-44/allkeys_CLDR.txt").unwrap();
 
     let mut map: FxHashMap<Vec<u32>, Vec<u32>> = FxHashMap::default();
 
@@ -71,7 +71,7 @@ pub fn map_arabic_script_multi() {
         for weights in &v {
             let (_, primary, _, _) = unpack_weights(*weights);
 
-            if (FIRST_ARABIC..=LAST_ARABIC).contains(&primary) {
+            if (FIRST_ARABIC_PRIMARY..=LAST_ARABIC_PRIMARY).contains(&primary) {
                 arabic = true;
                 break;
             }
@@ -87,7 +87,7 @@ pub fn map_arabic_script_multi() {
         for weights in &mut v {
             let (variable, primary, secondary, tertiary) = unpack_weights(*weights);
 
-            if (FIRST_ARABIC..=LAST_ARABIC).contains(&primary) {
+            if (FIRST_ARABIC_PRIMARY..=LAST_ARABIC_PRIMARY).contains(&primary) {
                 let new_primary = primary - OFFSET;
                 *weights = pack_weights(variable, new_primary, secondary, tertiary);
             }
@@ -97,12 +97,12 @@ pub fn map_arabic_script_multi() {
     }
 
     let bytes = bincode::serialize(&map).unwrap();
-    std::fs::write("bincode/cldr-43/tailoring/arabic_script_multi", bytes).unwrap();
+    std::fs::write("bincode/cldr-44/tailoring/arabic_script_multi", bytes).unwrap();
 }
 
 pub fn map_arabic_script_sing() {
     // This is based on the CLDR table, of course
-    let data = std::fs::read_to_string("unicode-data/cldr-43/allkeys_CLDR.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/cldr-44/allkeys_CLDR.txt").unwrap();
 
     let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
 
@@ -159,7 +159,7 @@ pub fn map_arabic_script_sing() {
         for weights in &v {
             let (_, primary, _, _) = unpack_weights(*weights);
 
-            if (FIRST_ARABIC..=LAST_ARABIC).contains(&primary) {
+            if (FIRST_ARABIC_PRIMARY..=LAST_ARABIC_PRIMARY).contains(&primary) {
                 arabic = true;
                 break;
             }
@@ -175,7 +175,7 @@ pub fn map_arabic_script_sing() {
         for weights in &mut v {
             let (variable, primary, secondary, tertiary) = unpack_weights(*weights);
 
-            if (FIRST_ARABIC..=LAST_ARABIC).contains(&primary) {
+            if (FIRST_ARABIC_PRIMARY..=LAST_ARABIC_PRIMARY).contains(&primary) {
                 let new_primary = primary - OFFSET;
                 *weights = pack_weights(variable, new_primary, secondary, tertiary);
             }
@@ -185,7 +185,7 @@ pub fn map_arabic_script_sing() {
     }
 
     let bytes = bincode::serialize(&map).unwrap();
-    std::fs::write("bincode/cldr-43/tailoring/arabic_script_sing", bytes).unwrap();
+    std::fs::write("bincode/cldr-44/tailoring/arabic_script_sing", bytes).unwrap();
 }
 
 #[cfg(test)]
@@ -194,12 +194,12 @@ mod tests {
 
     use super::*;
 
-    const LAST_BEFORE_LATIN: u16 = 8_115;
-    const FIRST_LATIN: u16 = 8_371;
+    const LAST_PRIMARY_BEFORE_LATIN: u16 = 0x1FA9;
+    const FIRST_LATIN_PRIMARY: u16 = 0x20A9; // 0061, "LATIN SMALL LETTER A"
 
     #[test]
     fn verify_offset() {
-        assert!((FIRST_ARABIC - OFFSET) > LAST_BEFORE_LATIN);
-        assert!((LAST_ARABIC - OFFSET) < FIRST_LATIN);
+        assert!((FIRST_ARABIC_PRIMARY - OFFSET) > LAST_PRIMARY_BEFORE_LATIN);
+        assert!((LAST_ARABIC_PRIMARY - OFFSET) < FIRST_LATIN_PRIMARY);
     }
 }

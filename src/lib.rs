@@ -8,12 +8,11 @@ pub const SEC_MAX: u16 = 511;
 pub const TER_MAX: u16 = 63;
 
 // The output of map_decomps is needed for map_fcd
-static DECOMP: Lazy<FxHashMap<u32, Vec<u32>>> =
-    Lazy::new(|| {
-        let data = std::fs::read("bincode/cldr-43/decomp").unwrap();
-        let decoded: FxHashMap<u32, Vec<u32>> = bincode::deserialize(&data).unwrap();
-        decoded
-    });
+static DECOMP: Lazy<FxHashMap<u32, Vec<u32>>> = Lazy::new(|| {
+    let data = std::fs::read("bincode/cldr-44/decomp").unwrap();
+    let decoded: FxHashMap<u32, Vec<u32>> = bincode::deserialize(&data).unwrap();
+    decoded
+});
 
 macro_rules! regex {
     ($re:literal $(,)?) => {{
@@ -23,7 +22,7 @@ macro_rules! regex {
 }
 
 pub fn map_decomps() {
-    let data = std::fs::read_to_string("unicode-data/cldr-43/UnicodeData.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/cldr-44/UnicodeData.txt").unwrap();
 
     let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
 
@@ -90,11 +89,11 @@ pub fn map_decomps() {
     }
 
     let bytes = bincode::serialize(&map).unwrap();
-    std::fs::write("bincode/cldr-43/decomp", bytes).unwrap();
+    std::fs::write("bincode/cldr-44/decomp", bytes).unwrap();
 }
 
 fn get_canonical_decomp(code_point: &str) -> Vec<u32> {
-    let data = std::fs::read_to_string("unicode-data/cldr-43/UnicodeData.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/cldr-44/UnicodeData.txt").unwrap();
 
     for line in data.lines() {
         if line.starts_with(code_point) {
@@ -142,7 +141,7 @@ fn get_canonical_decomp(code_point: &str) -> Vec<u32> {
 }
 
 pub fn map_fcd() {
-    let data = std::fs::read_to_string("unicode-data/cldr-43/UnicodeData.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/cldr-44/UnicodeData.txt").unwrap();
 
     let mut map: FxHashMap<u32, u16> = FxHashMap::default();
 
@@ -190,18 +189,17 @@ pub fn map_fcd() {
     }
 
     let bytes = bincode::serialize(&map).unwrap();
-    std::fs::write("bincode/cldr-43/fcd", bytes).unwrap();
+    std::fs::write("bincode/cldr-44/fcd", bytes).unwrap();
 }
 
 pub fn map_low(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let path_in =
-        if cldr {
-            "unicode-data/cldr-43/allkeys_CLDR.txt"
-        } else {
-            "unicode-data/cldr-43/allkeys.txt"
-        };
+    let path_in = if cldr {
+        "unicode-data/cldr-44/allkeys_CLDR.txt"
+    } else {
+        "unicode-data/cldr-44/allkeys.txt"
+    };
 
     let data = std::fs::read_to_string(path_in).unwrap();
 
@@ -246,9 +244,9 @@ pub fn map_low(keys: Tailoring) {
     }
 
     let path_out = if cldr {
-        "bincode/cldr-43/low_cldr"
+        "bincode/cldr-44/low_cldr"
     } else {
-        "bincode/cldr-43/low"
+        "bincode/cldr-44/low"
     };
 
     let bytes = bincode::serialize(&map).unwrap();
@@ -258,12 +256,11 @@ pub fn map_low(keys: Tailoring) {
 pub fn map_multi(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let path_in =
-        if cldr {
-            "unicode-data/cldr-43/allkeys_CLDR.txt"
-        } else {
-            "unicode-data/cldr-43/allkeys.txt"
-        };
+    let path_in = if cldr {
+        "unicode-data/cldr-44/allkeys_CLDR.txt"
+    } else {
+        "unicode-data/cldr-44/allkeys.txt"
+    };
 
     let data = std::fs::read_to_string(path_in).unwrap();
 
@@ -323,9 +320,9 @@ pub fn map_multi(keys: Tailoring) {
     }
 
     let path_out = if cldr {
-        "bincode/cldr-43/multis_cldr"
+        "bincode/cldr-44/multis_cldr"
     } else {
-        "bincode/cldr-43/multis"
+        "bincode/cldr-44/multis"
     };
 
     let bytes = bincode::serialize(&map).unwrap();
@@ -335,12 +332,11 @@ pub fn map_multi(keys: Tailoring) {
 pub fn map_sing(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let path_in =
-        if cldr {
-            "unicode-data/cldr-43/allkeys_CLDR.txt"
-        } else {
-            "unicode-data/cldr-43/allkeys.txt"
-        };
+    let path_in = if cldr {
+        "unicode-data/cldr-44/allkeys_CLDR.txt"
+    } else {
+        "unicode-data/cldr-44/allkeys.txt"
+    };
 
     let data = std::fs::read_to_string(path_in).unwrap();
 
@@ -398,9 +394,9 @@ pub fn map_sing(keys: Tailoring) {
     }
 
     let path_out = if cldr {
-        "bincode/cldr-43/singles_cldr"
+        "bincode/cldr-44/singles_cldr"
     } else {
-        "bincode/cldr-43/singles"
+        "bincode/cldr-44/singles"
     };
 
     let bytes = bincode::serialize(&map).unwrap();
@@ -413,7 +409,7 @@ pub fn map_variable() {
     // We only need to use DUCET for this, since (as far as I can tell from testing) every code
     // point in the CLDR table that has a variable weight or a zero primary weight, also has that
     // in DUCET. But the inverse is not true.
-    let data = std::fs::read_to_string("unicode-data/cldr-43/allkeys.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/cldr-44/allkeys.txt").unwrap();
 
     'outer: for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
@@ -460,7 +456,7 @@ pub fn map_variable() {
     }
 
     let bytes = bincode::serialize(&set).unwrap();
-    std::fs::write("bincode/cldr-43/variable", bytes).unwrap();
+    std::fs::write("bincode/cldr-44/variable", bytes).unwrap();
 }
 
 pub fn pack_weights(variable: bool, primary: u16, secondary: u16, tertiary: u16) -> u32 {
