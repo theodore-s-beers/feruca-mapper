@@ -1,3 +1,5 @@
+#![allow(clippy::regex_creation_in_loops)]
+
 use feruca_mapper::{pack_weights, unpack_weights};
 use once_cell::sync::OnceCell;
 use regex::Regex;

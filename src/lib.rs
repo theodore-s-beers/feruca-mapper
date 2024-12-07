@@ -1,3 +1,6 @@
+#![warn(clippy::pedantic, clippy::nursery)]
+#![allow(clippy::missing_panics_doc, clippy::regex_creation_in_loops)]
+
 use feruca::Tailoring;
 use once_cell::sync::{Lazy, OnceCell};
 use regex::Regex;
@@ -175,9 +178,8 @@ pub fn map_fcd() {
             continue;
         }
 
-        let canon_decomp = match DECOMP.get(&code_point) {
-            Some(d) => d,
-            None => continue,
+        let Some(canon_decomp) = DECOMP.get(&code_point) else {
+            continue;
         };
 
         let first_cc = get_ccc(canon_decomp[0]) as u8;
@@ -459,16 +461,18 @@ pub fn map_variable() {
     std::fs::write("bincode/cldr-44/variable", bytes).unwrap();
 }
 
+#[must_use]
 pub fn pack_weights(variable: bool, primary: u16, secondary: u16, tertiary: u16) -> u32 {
-    let upper = (primary as u32) << 16;
+    let upper = u32::from(primary) << 16;
 
-    let v_int: u16 = if variable { 1 } else { 0 };
+    let v_int = u16::from(variable);
     let lower = (v_int << 15 | tertiary << 9) | secondary;
 
-    upper | lower as u32
+    upper | u32::from(lower)
 }
 
-pub fn unpack_weights(packed: u32) -> (bool, u16, u16, u16) {
+#[must_use]
+pub const fn unpack_weights(packed: u32) -> (bool, u16, u16, u16) {
     let primary = (packed >> 16) as u16;
 
     let lower = (packed & 0xFFFF) as u16;
