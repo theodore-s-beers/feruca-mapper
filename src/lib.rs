@@ -466,7 +466,7 @@ pub fn pack_weights(variable: bool, primary: u16, secondary: u16, tertiary: u16)
     let upper = u32::from(primary) << 16;
 
     let v_int = u16::from(variable);
-    let lower = (v_int << 15 | tertiary << 9) | secondary;
+    let lower = (v_int << 15) | (tertiary << 9) | secondary;
 
     upper | u32::from(lower)
 }
