@@ -12,13 +12,13 @@ macro_rules! regex {
     }};
 }
 
-const FIRST_ARABIC_PRIMARY: u16 = 0x278E; // 0621, "ARABIC LETTER HAMZA"
-const LAST_ARABIC_PRIMARY: u16 = 0x2879; // 088E, "ARABIC VERTICAL TAIL"
+const FIRST_ARABIC_PRIMARY: u16 = 0x2A68; // 0621, "ARABIC LETTER HAMZA"
+const LAST_ARABIC_PRIMARY: u16 = 0x2B56; // 088E, "ARABIC VERTICAL TAIL"
 const OFFSET: u16 = 2_010; // This is tested below
 
 pub fn map_arabic_script_multi() {
     // This is based on the CLDR table, of course
-    let data = std::fs::read_to_string("unicode-data/cldr-44/allkeys_CLDR.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/cldr-46_1/allkeys_CLDR.txt").unwrap();
 
     let mut map: FxHashMap<Vec<u32>, Vec<u32>> = FxHashMap::default();
 
@@ -99,12 +99,12 @@ pub fn map_arabic_script_multi() {
     }
 
     let bytes = bincode::serialize(&map).unwrap();
-    std::fs::write("bincode/cldr-44/tailoring/arabic_script_multi", bytes).unwrap();
+    std::fs::write("bincode/cldr-46_1/tailoring/arabic_script_multi", bytes).unwrap();
 }
 
 pub fn map_arabic_script_sing() {
     // This is based on the CLDR table, of course
-    let data = std::fs::read_to_string("unicode-data/cldr-44/allkeys_CLDR.txt").unwrap();
+    let data = std::fs::read_to_string("unicode-data/cldr-46_1/allkeys_CLDR.txt").unwrap();
 
     let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
 
@@ -187,7 +187,7 @@ pub fn map_arabic_script_sing() {
     }
 
     let bytes = bincode::serialize(&map).unwrap();
-    std::fs::write("bincode/cldr-44/tailoring/arabic_script_sing", bytes).unwrap();
+    std::fs::write("bincode/cldr-46_1/tailoring/arabic_script_sing", bytes).unwrap();
 }
 
 #[cfg(test)]
@@ -196,8 +196,8 @@ mod tests {
 
     use super::*;
 
-    const LAST_PRIMARY_BEFORE_LATIN: u16 = 0x1FA9;
-    const FIRST_LATIN_PRIMARY: u16 = 0x20A9; // 0061, "LATIN SMALL LETTER A"
+    const LAST_PRIMARY_BEFORE_LATIN: u16 = 0x2186;
+    const FIRST_LATIN_PRIMARY: u16 = 0x2380; // 0061, "LATIN SMALL LETTER A"
 
     #[test]
     fn verify_offset() {
