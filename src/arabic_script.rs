@@ -1,13 +1,13 @@
 #![allow(clippy::regex_creation_in_loops)]
 
 use feruca_mapper::{pack_weights, unpack_weights};
-use once_cell::sync::OnceCell;
 use regex::Regex;
 use rustc_hash::FxHashMap;
+use std::sync::OnceLock;
 
 macro_rules! regex {
     ($re:literal $(,)?) => {{
-        static RE: OnceCell<Regex> = OnceCell::new();
+        static RE: OnceLock<Regex> = OnceLock::new();
         RE.get_or_init(|| Regex::new($re).unwrap())
     }};
 }

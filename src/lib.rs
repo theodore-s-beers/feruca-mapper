@@ -2,9 +2,9 @@
 #![allow(clippy::missing_panics_doc, clippy::regex_creation_in_loops)]
 
 use feruca::Tailoring;
-use once_cell::sync::{Lazy, OnceCell};
 use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
+use std::sync::{LazyLock, OnceLock};
 use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
 
 const SEC_MAX: u16 = 511;
@@ -15,7 +15,7 @@ const SHIFT_END: u16 = 0x72B6;
 const SHIFT: u16 = 0x400;
 
 // The output of map_decomps is needed for map_fcd
-static DECOMP: Lazy<FxHashMap<u32, Vec<u32>>> = Lazy::new(|| {
+static DECOMP: LazyLock<FxHashMap<u32, Vec<u32>>> = LazyLock::new(|| {
     let data = std::fs::read("bincode/cldr-46_1/decomp").unwrap();
     let decoded: FxHashMap<u32, Vec<u32>> = bincode::deserialize(&data).unwrap();
     decoded
@@ -23,7 +23,7 @@ static DECOMP: Lazy<FxHashMap<u32, Vec<u32>>> = Lazy::new(|| {
 
 macro_rules! regex {
     ($re:literal $(,)?) => {{
-        static RE: OnceCell<Regex> = OnceCell::new();
+        static RE: OnceLock<Regex> = OnceLock::new();
         RE.get_or_init(|| Regex::new($re).unwrap())
     }};
 }

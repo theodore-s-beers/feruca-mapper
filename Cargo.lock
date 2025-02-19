@@ -34,7 +34,7 @@ dependencies = [
 [[package]]
 name = "feruca"
 version = "0.10.1"
-source = "git+https://github.com/theodore-s-beers/feruca#86c824bebf41d79e4f435efe74e9e282435d8afa"
+source = "git+https://github.com/theodore-s-beers/feruca#636f98e2179bc893f80a3d8cce4a4c40ee663015"
 dependencies = [
  "bincode",
  "bstr",
@@ -48,7 +48,6 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "feruca",
- "once_cell",
  "regex",
  "rustc-hash",
  "unicode-canonical-combining-class",
@@ -59,12 +58,6 @@ name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
-
-[[package]]
-name = "once_cell"
-version = "1.20.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "945462a4b81e43c4e3ba96bd7b49d834c6f61198356aa858733bc4acf3cbe62e"
 
 [[package]]
 name = "proc-macro2"
