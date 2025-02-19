@@ -7,8 +7,12 @@ use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
 use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
 
-pub const SEC_MAX: u16 = 511;
-pub const TER_MAX: u16 = 63;
+const SEC_MAX: u16 = 511;
+const TER_MAX: u16 = 63;
+
+const SHIFT_START: u16 = 0x2380;
+const SHIFT_END: u16 = 0x72B6;
+const SHIFT: u16 = 0x400;
 
 // The output of map_decomps is needed for map_fcd
 static DECOMP: Lazy<FxHashMap<u32, Vec<u32>>> = Lazy::new(|| {
@@ -228,7 +232,11 @@ pub fn map_low(keys: Tailoring) {
 
                 let mut weights = re_individual_weight.find_iter(set);
 
-                let primary = u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
+                let mut primary =
+                    u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
+                if cldr && (SHIFT_START..=SHIFT_END).contains(&primary) {
+                    primary += SHIFT;
+                }
 
                 let secondary = u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
                 assert!(secondary <= SEC_MAX);
@@ -301,7 +309,10 @@ pub fn map_multi(keys: Tailoring) {
 
             let mut vals = re_value.find_iter(weights_str);
 
-            let primary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+            let mut primary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+            if cldr && (SHIFT_START..=SHIFT_END).contains(&primary) {
+                primary += SHIFT;
+            }
 
             let secondary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
             assert!(secondary <= SEC_MAX);
@@ -379,7 +390,10 @@ pub fn map_sing(keys: Tailoring) {
 
             let mut vals = re_value.find_iter(weights_str);
 
-            let primary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+            let mut primary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+            if cldr && (SHIFT_START..=SHIFT_END).contains(&primary) {
+                primary += SHIFT;
+            }
 
             let secondary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
             assert!(secondary <= SEC_MAX);

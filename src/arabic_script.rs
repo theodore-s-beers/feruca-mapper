@@ -14,7 +14,7 @@ macro_rules! regex {
 
 const FIRST_ARABIC_PRIMARY: u16 = 0x2A68; // 0621, "ARABIC LETTER HAMZA"
 const LAST_ARABIC_PRIMARY: u16 = 0x2B56; // 088E, "ARABIC VERTICAL TAIL"
-const OFFSET: u16 = 2_010; // This is tested below
+const OFFSET: u16 = 0x600; // This is tested below
 
 pub fn map_arabic_script_multi() {
     // This is based on the CLDR table, of course
@@ -196,8 +196,8 @@ mod tests {
 
     use super::*;
 
-    const LAST_PRIMARY_BEFORE_LATIN: u16 = 0x2186;
-    const FIRST_LATIN_PRIMARY: u16 = 0x2380; // 0061, "LATIN SMALL LETTER A"
+    const LAST_PRIMARY_BEFORE_LATIN: u16 = 0x237F;
+    const FIRST_LATIN_PRIMARY: u16 = 0x2380 + 0x400; // 0061, "LATIN SMALL LETTER A"
 
     #[test]
     fn verify_offset() {
