@@ -1,5 +1,9 @@
 #![warn(clippy::pedantic, clippy::nursery)]
-#![allow(clippy::missing_panics_doc, clippy::regex_creation_in_loops)]
+#![allow(
+    clippy::cast_lossless,
+    clippy::missing_panics_doc,
+    clippy::regex_creation_in_loops
+)]
 
 use feruca::Tailoring;
 use regex::Regex;
@@ -12,7 +16,7 @@ const TER_MAX: u16 = 63;
 
 const SHIFT_START: u16 = 0x2380;
 const SHIFT_END: u16 = 0x72B6;
-const SHIFT: u16 = 0x400;
+pub const SHIFT: u16 = 0x400;
 
 // The output of map_decomps is needed for map_fcd
 static DECOMP: LazyLock<FxHashMap<u32, Vec<u32>>> = LazyLock::new(|| {
@@ -189,7 +193,7 @@ pub fn map_fcd() {
         let first_cc = get_ccc(canon_decomp[0]) as u8;
         let last_cc = get_ccc(canon_decomp[canon_decomp.len() - 1]) as u8;
 
-        let packed = (u16::from(first_cc) << 8) | u16::from(last_cc);
+        let packed = ((first_cc as u16) << 8) | (last_cc as u16);
 
         map.insert(code_point, packed);
     }
@@ -476,13 +480,13 @@ pub fn map_variable() {
 }
 
 #[must_use]
-pub fn pack_weights(variable: bool, primary: u16, secondary: u16, tertiary: u16) -> u32 {
-    let upper = u32::from(primary) << 16;
+pub const fn pack_weights(variable: bool, primary: u16, secondary: u16, tertiary: u16) -> u32 {
+    let upper = (primary as u32) << 16;
 
-    let v_int = u16::from(variable);
+    let v_int = variable as u16;
     let lower = (v_int << 15) | (tertiary << 9) | secondary;
 
-    upper | u32::from(lower)
+    upper | (lower as u32)
 }
 
 #[must_use]

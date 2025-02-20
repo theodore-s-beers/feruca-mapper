@@ -195,9 +195,10 @@ mod tests {
     #![allow(clippy::assertions_on_constants)]
 
     use super::*;
+    use feruca_mapper::SHIFT;
 
     const LAST_PRIMARY_BEFORE_LATIN: u16 = 0x237F;
-    const FIRST_LATIN_PRIMARY: u16 = 0x2380 + 0x400; // 0061, "LATIN SMALL LETTER A"
+    const FIRST_LATIN_PRIMARY: u16 = 0x2380 + SHIFT; // 0061, "LATIN SMALL LETTER A"
 
     #[test]
     fn verify_offset() {
