@@ -34,7 +34,7 @@ dependencies = [
 [[package]]
 name = "feruca"
 version = "0.10.1"
-source = "git+https://github.com/theodore-s-beers/feruca#58740822d5c4a14ef345e536f4332607a91a7b36"
+source = "git+https://github.com/theodore-s-beers/feruca#266d93828858092ddd14e8bbdb40b83def7ec444"
 dependencies = [
  "bincode",
  "bstr",
