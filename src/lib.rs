@@ -17,7 +17,7 @@ const TER_MAX: u16 = 0x1E; // Largest tertiary weight that is actually used
 // This adjustment affects only the low and singles maps
 const BUMP_START: u16 = 0x2384; // Latin small capital A
 const BUMP_END: u16 = 0x2454; // Small gap above this, before Latin H, that we can use
-const BUMP: u16 = 1;
+pub const BUMP: u16 = 1;
 
 const SHIFT_START: u16 = 0x2380; // Latin script begins
 const SHIFT_END: u16 = 0x72B6; // Large gap above this that we can use

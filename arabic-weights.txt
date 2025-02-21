@@ -1,0 +1,65 @@
+A
+Alif madda 2A69         2381 + shift
+Alif hamza above 2A6A   2382 + shift
+Alif hamza below 2A6E   2383 + shift
+Alif 2A76               2384 + shift
+
+B
+Ba 2A78                 239B + bump + shift
+
+D
+Dal 2AA9                23CB + bump + shift
+Dhal 2AAA               23CC + bump + shift
+ḍ 2AD8                  23CD + bump + shift
+
+F
+Fa 2AED                 2423 + bump + shift
+
+G
+Gh 2AE5                 2432 + bump + shift
+
+H
+ḥa 2A9E                 2459 + shift
+Ha 2B30                 245A + shift
+
+J
+Jim 2A93                2490 + shift
+
+K
+Kh 2A9F                 24A9 + shift
+Kaf 2B00                24AA + shift
+
+L
+Lam 2B19                24BD + shift
+
+M
+Mim 2B21                24F7 + shift
+
+N
+Nun 2B25                2506 + shift
+
+Q
+Qaf 2AF9                2572 + shift
+
+R
+Ra 2AB9                 2585 + shift
+
+S
+Sin 2ACC                25C7 + shift
+Shin 2ACD               25C8 + shift
+ṣ 2AD7                  25C9 + shift
+
+T
+Ta 2A89                 25F2 + shift
+Th 2A8A                 25F3 + shift
+ṭ 2ADD                  25F4 + shift
+
+W
+Waw 2B36                2657 + shift
+
+Y
+Ya 2B45                 266D + shift
+
+Z
+Za 2ABA                 2683 + shift
+ẓ 2ADE                  2684 + shift
