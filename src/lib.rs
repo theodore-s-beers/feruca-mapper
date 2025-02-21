@@ -11,11 +11,16 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use std::sync::{LazyLock, OnceLock};
 use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
 
-const SEC_MAX: u16 = 511;
-const TER_MAX: u16 = 63;
+const SEC_MAX: u16 = 0x126; // Largest secondary weight that is actually used
+const TER_MAX: u16 = 0x1E; // Largest tertiary weight that is actually used
 
-const SHIFT_START: u16 = 0x2380;
-const SHIFT_END: u16 = 0x72B6;
+// This adjustment affects only the low and singles maps
+const BUMP_START: u16 = 0x2384; // Latin small capital A
+const BUMP_END: u16 = 0x2454; // Small gap above this, before Latin H, that we can use
+const BUMP: u16 = 1;
+
+const SHIFT_START: u16 = 0x2380; // Latin script begins
+const SHIFT_END: u16 = 0x72B6; // Large gap above this that we can use
 pub const SHIFT: u16 = 0x400;
 
 // The output of map_decomps is needed for map_fcd
@@ -238,6 +243,9 @@ pub fn map_low(keys: Tailoring) {
 
                 let mut primary =
                     u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
+                if cldr && (BUMP_START..=BUMP_END).contains(&primary) {
+                    primary += BUMP;
+                }
                 if cldr && (SHIFT_START..=SHIFT_END).contains(&primary) {
                     primary += SHIFT;
                 }
@@ -395,6 +403,9 @@ pub fn map_sing(keys: Tailoring) {
             let mut vals = re_value.find_iter(weights_str);
 
             let mut primary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+            if cldr && (BUMP_START..=BUMP_END).contains(&primary) {
+                primary += BUMP;
+            }
             if cldr && (SHIFT_START..=SHIFT_END).contains(&primary) {
                 primary += SHIFT;
             }
