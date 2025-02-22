@@ -11,6 +11,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use std::sync::{LazyLock, OnceLock};
 use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
 
+const KEYS_DUCET: &str = "unicode-data/cldr-46_1/allkeys.txt";
+pub const KEYS_CLDR: &str = "unicode-data/cldr-46_1/allkeys_CLDR.txt";
+const UNI_DATA: &str = "unicode-data/cldr-46_1/UnicodeData.txt";
+
 const SEC_MAX: u16 = 0x126; // Largest secondary weight that is actually used
 const TER_MAX: u16 = 0x1E; // Largest tertiary weight that is actually used
 
@@ -30,6 +34,7 @@ static DECOMP: LazyLock<FxHashMap<u32, Vec<u32>>> = LazyLock::new(|| {
     decoded
 });
 
+#[macro_export]
 macro_rules! regex {
     ($re:literal $(,)?) => {{
         static RE: OnceLock<Regex> = OnceLock::new();
@@ -38,7 +43,7 @@ macro_rules! regex {
 }
 
 pub fn map_decomps() {
-    let data = std::fs::read_to_string("unicode-data/cldr-46_1/UnicodeData.txt").unwrap();
+    let data = std::fs::read_to_string(UNI_DATA).unwrap();
 
     let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
 
@@ -109,7 +114,7 @@ pub fn map_decomps() {
 }
 
 fn get_canonical_decomp(code_point: &str) -> Vec<u32> {
-    let data = std::fs::read_to_string("unicode-data/cldr-46_1/UnicodeData.txt").unwrap();
+    let data = std::fs::read_to_string(UNI_DATA).unwrap();
 
     for line in data.lines() {
         if line.starts_with(code_point) {
@@ -157,7 +162,7 @@ fn get_canonical_decomp(code_point: &str) -> Vec<u32> {
 }
 
 pub fn map_fcd() {
-    let data = std::fs::read_to_string("unicode-data/cldr-46_1/UnicodeData.txt").unwrap();
+    let data = std::fs::read_to_string(UNI_DATA).unwrap();
 
     let mut map: FxHashMap<u32, u16> = FxHashMap::default();
 
@@ -210,12 +215,7 @@ pub fn map_fcd() {
 pub fn map_low(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let path_in = if cldr {
-        "unicode-data/cldr-46_1/allkeys_CLDR.txt"
-    } else {
-        "unicode-data/cldr-46_1/allkeys.txt"
-    };
-
+    let path_in = if cldr { KEYS_CLDR } else { KEYS_DUCET };
     let data = std::fs::read_to_string(path_in).unwrap();
 
     let re_set_of_weights = regex!(r"[*.\dA-F]{15}");
@@ -278,12 +278,7 @@ pub fn map_low(keys: Tailoring) {
 pub fn map_multi(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let path_in = if cldr {
-        "unicode-data/cldr-46_1/allkeys_CLDR.txt"
-    } else {
-        "unicode-data/cldr-46_1/allkeys.txt"
-    };
-
+    let path_in = if cldr { KEYS_CLDR } else { KEYS_DUCET };
     let data = std::fs::read_to_string(path_in).unwrap();
 
     let mut map: FxHashMap<Vec<u32>, Vec<u32>> = FxHashMap::default();
@@ -357,12 +352,7 @@ pub fn map_multi(keys: Tailoring) {
 pub fn map_sing(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let path_in = if cldr {
-        "unicode-data/cldr-46_1/allkeys_CLDR.txt"
-    } else {
-        "unicode-data/cldr-46_1/allkeys.txt"
-    };
-
+    let path_in = if cldr { KEYS_CLDR } else { KEYS_DUCET };
     let data = std::fs::read_to_string(path_in).unwrap();
 
     let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
@@ -440,7 +430,7 @@ pub fn map_variable() {
     // We only need to use DUCET for this, since (as far as I can tell from testing) every code
     // point in the CLDR table that has a variable weight or a zero primary weight, also has that
     // in DUCET. But the inverse is not true.
-    let data = std::fs::read_to_string("unicode-data/cldr-46_1/allkeys.txt").unwrap();
+    let data = std::fs::read_to_string(KEYS_DUCET).unwrap();
 
     'outer: for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {

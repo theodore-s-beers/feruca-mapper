@@ -6,14 +6,7 @@ use std::sync::{LazyLock, OnceLock};
 use regex::Regex;
 use rustc_hash::FxHashMap;
 
-use feruca_mapper::{BUMP, SHIFT, pack_weights, unpack_weights};
-
-macro_rules! regex {
-    ($re:literal $(,)?) => {{
-        static RE: OnceLock<Regex> = OnceLock::new();
-        RE.get_or_init(|| Regex::new($re).unwrap())
-    }};
-}
+use feruca_mapper::{BUMP, KEYS_CLDR, SHIFT, pack_weights, regex, unpack_weights};
 
 static MAPPING: LazyLock<HashMap<u16, u16>> = LazyLock::new(|| {
     HashMap::from([
@@ -52,7 +45,7 @@ static MAPPING: LazyLock<HashMap<u16, u16>> = LazyLock::new(|| {
 
 pub fn map_arabic_interleaved_multi() {
     // This is based on the CLDR table, of course
-    let data = std::fs::read_to_string("unicode-data/cldr-46_1/allkeys_CLDR.txt").unwrap();
+    let data = std::fs::read_to_string(KEYS_CLDR).unwrap();
 
     let mut map: FxHashMap<Vec<u32>, Vec<u32>> = FxHashMap::default();
 
@@ -100,7 +93,7 @@ pub fn map_arabic_interleaved_multi() {
 
         // Up to this point, we haven't been so selective. We've taken any multi-code-point
         // sequence and the corresponding Vec of Weights. But we need to check to make sure there
-        // is at least one Arabic-block primary weight. Otherwise we continue.
+        // is at least one relevant primary weight. Otherwise we continue.
 
         let mut arabic = false;
 
@@ -117,8 +110,8 @@ pub fn map_arabic_interleaved_multi() {
             continue;
         }
 
-        // Then we look again for any Arabic-block primary weight, and shift it down to fit in the
-        // space before the Latin script.
+        // Then we look again for any Arabic letter primary weight, and shift it down to fit in
+        // its proper space among the Latin letters.
 
         for weights in &mut v {
             let (variable, primary, secondary, tertiary) = unpack_weights(*weights);
@@ -141,7 +134,7 @@ pub fn map_arabic_interleaved_multi() {
 
 pub fn map_arabic_interleaved_sing() {
     // This is based on the CLDR table, of course
-    let data = std::fs::read_to_string("unicode-data/cldr-46_1/allkeys_CLDR.txt").unwrap();
+    let data = std::fs::read_to_string(KEYS_CLDR).unwrap();
 
     let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
 
@@ -191,7 +184,7 @@ pub fn map_arabic_interleaved_sing() {
 
         // Up to this point, we haven't been so selective. We've taken any single code point and
         // the corresponding Vec of Weights. But we need to check to make sure there is at least
-        // one Arabic-block primary weight. Otherwise we continue.
+        // one relevant primary weight. Otherwise we continue.
 
         let mut arabic = false;
 
@@ -208,8 +201,8 @@ pub fn map_arabic_interleaved_sing() {
             continue;
         }
 
-        // Then we look again for any Arabic-block primary weight, and shift it down to fit in the
-        // space before the Latin script.
+        // Then we look again for any Arabic letter primary weight, and shift it down to fit in
+        // its proper space among the Latin letters.
 
         for weights in &mut v {
             let (variable, primary, secondary, tertiary) = unpack_weights(*weights);

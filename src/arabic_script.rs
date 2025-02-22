@@ -1,16 +1,11 @@
 #![allow(clippy::regex_creation_in_loops)]
 
-use feruca_mapper::{pack_weights, unpack_weights};
-use regex::Regex;
-use rustc_hash::FxHashMap;
 use std::sync::OnceLock;
 
-macro_rules! regex {
-    ($re:literal $(,)?) => {{
-        static RE: OnceLock<Regex> = OnceLock::new();
-        RE.get_or_init(|| Regex::new($re).unwrap())
-    }};
-}
+use regex::Regex;
+use rustc_hash::FxHashMap;
+
+use feruca_mapper::{KEYS_CLDR, pack_weights, regex, unpack_weights};
 
 const FIRST_ARABIC_PRIMARY: u16 = 0x2A68; // 0621, "ARABIC LETTER HAMZA"
 const LAST_ARABIC_PRIMARY: u16 = 0x2B56; // 088E, "ARABIC VERTICAL TAIL"
@@ -18,7 +13,7 @@ const OFFSET: u16 = 0x600; // This is tested below
 
 pub fn map_arabic_script_multi() {
     // This is based on the CLDR table, of course
-    let data = std::fs::read_to_string("unicode-data/cldr-46_1/allkeys_CLDR.txt").unwrap();
+    let data = std::fs::read_to_string(KEYS_CLDR).unwrap();
 
     let mut map: FxHashMap<Vec<u32>, Vec<u32>> = FxHashMap::default();
 
@@ -104,7 +99,7 @@ pub fn map_arabic_script_multi() {
 
 pub fn map_arabic_script_sing() {
     // This is based on the CLDR table, of course
-    let data = std::fs::read_to_string("unicode-data/cldr-46_1/allkeys_CLDR.txt").unwrap();
+    let data = std::fs::read_to_string(KEYS_CLDR).unwrap();
 
     let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
 
