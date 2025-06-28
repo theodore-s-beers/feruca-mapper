@@ -1,10 +1,11 @@
 #![allow(clippy::regex_creation_in_loops)]
 
-use std::collections::HashMap;
-use std::sync::{LazyLock, OnceLock};
-
+use bincode::{config, encode_to_vec};
 use regex::Regex;
 use rustc_hash::FxHashMap;
+
+use std::collections::HashMap;
+use std::sync::{LazyLock, OnceLock};
 
 use feruca_mapper::{BUMP, KEYS_CLDR, SHIFT, pack_weights, regex, unpack_weights};
 
@@ -130,7 +131,7 @@ pub fn map_arabic_interleaved_multi() {
         map.insert(k, v);
     }
 
-    let bytes = bincode::serialize(&map).unwrap();
+    let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write(
         "bincode/cldr-46_1/tailoring/arabic_interleaved_multi",
         bytes,
@@ -221,6 +222,6 @@ pub fn map_arabic_interleaved_sing() {
         map.insert(k, v);
     }
 
-    let bytes = bincode::serialize(&map).unwrap();
+    let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/tailoring/arabic_interleaved_sing", bytes).unwrap();
 }

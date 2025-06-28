@@ -1,9 +1,10 @@
 #![allow(clippy::regex_creation_in_loops)]
 
-use std::sync::OnceLock;
-
+use bincode::{config, encode_to_vec};
 use regex::Regex;
 use rustc_hash::FxHashMap;
+
+use std::sync::OnceLock;
 
 use feruca_mapper::{KEYS_CLDR, pack_weights, regex, unpack_weights};
 
@@ -93,7 +94,7 @@ pub fn map_arabic_script_multi() {
         map.insert(k, v);
     }
 
-    let bytes = bincode::serialize(&map).unwrap();
+    let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/tailoring/arabic_script_multi", bytes).unwrap();
 }
 
@@ -181,7 +182,7 @@ pub fn map_arabic_script_sing() {
         map.insert(k, v);
     }
 
-    let bytes = bincode::serialize(&map).unwrap();
+    let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/tailoring/arabic_script_sing", bytes).unwrap();
 }
 

@@ -5,11 +5,13 @@
     clippy::regex_creation_in_loops
 )]
 
+use bincode::{config, decode_from_slice, encode_to_vec};
 use feruca::Tailoring;
 use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
-use std::sync::{LazyLock, OnceLock};
 use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
+
+use std::sync::{LazyLock, OnceLock};
 
 const KEYS_DUCET: &str = "unicode-data/cldr-46_1/allkeys.txt";
 pub const KEYS_CLDR: &str = "unicode-data/cldr-46_1/allkeys_CLDR.txt";
@@ -30,7 +32,7 @@ pub const SHIFT: u16 = 0x400;
 // The output of map_decomps is needed for map_fcd
 static DECOMP: LazyLock<FxHashMap<u32, Vec<u32>>> = LazyLock::new(|| {
     let data = std::fs::read("bincode/cldr-46_1/decomp").unwrap();
-    let decoded: FxHashMap<u32, Vec<u32>> = bincode::deserialize(&data).unwrap();
+    let decoded: FxHashMap<u32, Vec<u32>> = decode_from_slice(&data, config::standard()).unwrap().0;
     decoded
 });
 
@@ -109,7 +111,7 @@ pub fn map_decomps() {
         map.insert(code_point, final_decomp);
     }
 
-    let bytes = bincode::serialize(&map).unwrap();
+    let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/decomp", bytes).unwrap();
 }
 
@@ -208,7 +210,7 @@ pub fn map_fcd() {
         map.insert(code_point, packed);
     }
 
-    let bytes = bincode::serialize(&map).unwrap();
+    let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/fcd", bytes).unwrap();
 }
 
@@ -271,7 +273,7 @@ pub fn map_low(keys: Tailoring) {
         "bincode/cldr-46_1/low"
     };
 
-    let bytes = bincode::serialize(&map).unwrap();
+    let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write(path_out, bytes).unwrap();
 }
 
@@ -345,7 +347,7 @@ pub fn map_multi(keys: Tailoring) {
         "bincode/cldr-46_1/multis"
     };
 
-    let bytes = bincode::serialize(&map).unwrap();
+    let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write(path_out, bytes).unwrap();
 }
 
@@ -420,7 +422,7 @@ pub fn map_sing(keys: Tailoring) {
         "bincode/cldr-46_1/singles"
     };
 
-    let bytes = bincode::serialize(&map).unwrap();
+    let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write(path_out, bytes).unwrap();
 }
 
@@ -476,7 +478,7 @@ pub fn map_variable() {
         }
     }
 
-    let bytes = bincode::serialize(&set).unwrap();
+    let bytes = encode_to_vec(&set, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/variable", bytes).unwrap();
 }
 
