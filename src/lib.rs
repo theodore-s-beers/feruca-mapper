@@ -30,9 +30,10 @@ const SHIFT_END: u16 = 0x72B6; // Large gap above this that we can use
 pub const SHIFT: u16 = 0x400;
 
 // The output of map_decomps is needed for map_fcd
-static DECOMP: LazyLock<FxHashMap<u32, Vec<u32>>> = LazyLock::new(|| {
+static DECOMP: LazyLock<FxHashMap<u32, Box<[u32]>>> = LazyLock::new(|| {
     let data = std::fs::read("bincode/cldr-46_1/decomp").unwrap();
-    let decoded: FxHashMap<u32, Vec<u32>> = decode_from_slice(&data, config::standard()).unwrap().0;
+    let decoded: FxHashMap<u32, Box<[u32]>> =
+        decode_from_slice(&data, config::standard()).unwrap().0;
     decoded
 });
 
@@ -47,7 +48,7 @@ macro_rules! regex {
 pub fn map_decomps() {
     let data = std::fs::read_to_string(UNI_DATA).unwrap();
 
-    let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
+    let mut map: FxHashMap<u32, Box<[u32]>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() {
@@ -115,7 +116,7 @@ pub fn map_decomps() {
     std::fs::write("bincode/cldr-46_1/decomp", bytes).unwrap();
 }
 
-fn get_canonical_decomp(code_point: &str) -> Vec<u32> {
+fn get_canonical_decomp(code_point: &str) -> Box<[u32]> {
     let data = std::fs::read_to_string(UNI_DATA).unwrap();
 
     for line in data.lines() {
@@ -124,7 +125,7 @@ fn get_canonical_decomp(code_point: &str) -> Vec<u32> {
 
             // Further decomposition is non-canonical; return the code point itself
             if decomp_col.contains('<') {
-                return vec![u32::from_str_radix(code_point, 16).unwrap()];
+                return vec![u32::from_str_radix(code_point, 16).unwrap()].into_boxed_slice();
             }
 
             let re = regex!(r"[\dA-F]{4,5}");
@@ -154,13 +155,13 @@ fn get_canonical_decomp(code_point: &str) -> Vec<u32> {
             }
 
             // No further decomposition; return the code point itself
-            return vec![u32::from_str_radix(code_point, 16).unwrap()];
+            return vec![u32::from_str_radix(code_point, 16).unwrap()].into_boxed_slice();
         }
     }
 
     // This means we followed a canonical decomposition to a single code point that was then not
     // found in the first column of the table. Return it, I guess?
-    vec![u32::from_str_radix(code_point, 16).unwrap()]
+    vec![u32::from_str_radix(code_point, 16).unwrap()].into_boxed_slice()
 }
 
 pub fn map_fcd() {
@@ -347,7 +348,11 @@ pub fn map_multi(keys: Tailoring) {
         "bincode/cldr-46_1/multis"
     };
 
-    let bytes = encode_to_vec(&map, config::standard()).unwrap();
+    let boxed: FxHashMap<Box<[u32]>, Box<[u32]>> = map
+        .into_iter()
+        .map(|(k, v)| (k.into_boxed_slice(), v.into_boxed_slice()))
+        .collect();
+    let bytes = encode_to_vec(&boxed, config::standard()).unwrap();
     std::fs::write(path_out, bytes).unwrap();
 }
 
@@ -422,7 +427,11 @@ pub fn map_sing(keys: Tailoring) {
         "bincode/cldr-46_1/singles"
     };
 
-    let bytes = encode_to_vec(&map, config::standard()).unwrap();
+    let boxed: FxHashMap<u32, Box<[u32]>> = map
+        .into_iter()
+        .map(|(k, v)| (k, v.into_boxed_slice()))
+        .collect();
+    let bytes = encode_to_vec(&boxed, config::standard()).unwrap();
     std::fs::write(path_out, bytes).unwrap();
 }
 

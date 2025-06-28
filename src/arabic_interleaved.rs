@@ -131,7 +131,11 @@ pub fn map_arabic_interleaved_multi() {
         map.insert(k, v);
     }
 
-    let bytes = encode_to_vec(&map, config::standard()).unwrap();
+    let boxed: FxHashMap<Box<[u32]>, Box<[u32]>> = map
+        .into_iter()
+        .map(|(k, v)| (k.into_boxed_slice(), v.into_boxed_slice()))
+        .collect();
+    let bytes = encode_to_vec(&boxed, config::standard()).unwrap();
     std::fs::write(
         "bincode/cldr-46_1/tailoring/arabic_interleaved_multi",
         bytes,
@@ -222,6 +226,10 @@ pub fn map_arabic_interleaved_sing() {
         map.insert(k, v);
     }
 
-    let bytes = encode_to_vec(&map, config::standard()).unwrap();
+    let boxed: FxHashMap<u32, Box<[u32]>> = map
+        .into_iter()
+        .map(|(k, v)| (k, v.into_boxed_slice()))
+        .collect();
+    let bytes = encode_to_vec(&boxed, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/tailoring/arabic_interleaved_sing", bytes).unwrap();
 }
