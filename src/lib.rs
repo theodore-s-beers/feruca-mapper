@@ -73,9 +73,9 @@ pub fn map_decomps() {
             || (0x2B820..=0x2CEA1).contains(&code_point) // CJK ext E
             || (0x2CEB0..=0x2EBE0).contains(&code_point) // CJK ext F
             || (0x30000..=0x3134A).contains(&code_point) // CJK ext G
-            || (0xF0000..=0xFFFFD).contains(&code_point) // Plane 15 private use
-            // Plane 16 private use
-            || (0x100000..=0x10FFFD).contains(&code_point)
+            // Planes 15 and 16, private use
+            || (0xF0000..=0xFFFFD).contains(&code_point)
+            || (0x10_0000..=0x10_FFFD).contains(&code_point)
         {
             continue;
         }
