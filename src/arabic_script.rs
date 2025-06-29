@@ -14,7 +14,7 @@ const OFFSET: u16 = 0x600; // This is tested below
 
 pub fn map_arabic_script_multi() {
     // This is based on the CLDR table, of course
-    let data = std::fs::read_to_string(KEYS_CLDR).unwrap();
+    let data = KEYS_CLDR.as_str();
 
     let mut map: FxHashMap<Vec<u32>, Vec<u32>> = FxHashMap::default();
 
@@ -104,7 +104,7 @@ pub fn map_arabic_script_multi() {
 
 pub fn map_arabic_script_sing() {
     // This is based on the CLDR table, of course
-    let data = std::fs::read_to_string(KEYS_CLDR).unwrap();
+    let data = KEYS_CLDR.as_str();
 
     let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
 

@@ -13,8 +13,12 @@ use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_
 
 use std::sync::{LazyLock, OnceLock};
 
-const KEYS_DUCET: &str = "unicode-data/cldr-46_1/allkeys.txt";
-pub const KEYS_CLDR: &str = "unicode-data/cldr-46_1/allkeys_CLDR.txt";
+static KEYS_DUCET: LazyLock<String> =
+    LazyLock::new(|| std::fs::read_to_string("unicode-data/cldr-46_1/allkeys.txt").unwrap());
+
+pub static KEYS_CLDR: LazyLock<String> =
+    LazyLock::new(|| std::fs::read_to_string("unicode-data/cldr-46_1/allkeys_CLDR.txt").unwrap());
+
 static UNI_DATA: LazyLock<String> =
     LazyLock::new(|| std::fs::read_to_string("unicode-data/cldr-46_1/UnicodeData.txt").unwrap());
 
@@ -213,8 +217,11 @@ pub fn map_fcd() {
 pub fn map_low(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let path_in = if cldr { KEYS_CLDR } else { KEYS_DUCET };
-    let data = std::fs::read_to_string(path_in).unwrap();
+    let data = if cldr {
+        KEYS_CLDR.as_str()
+    } else {
+        KEYS_DUCET.as_str()
+    };
 
     let re_set_of_weights = regex!(r"[*.\dA-F]{15}");
     let re_individual_weight = regex!(r"[\dA-F]{4}");
@@ -276,8 +283,11 @@ pub fn map_low(keys: Tailoring) {
 pub fn map_multi(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let path_in = if cldr { KEYS_CLDR } else { KEYS_DUCET };
-    let data = std::fs::read_to_string(path_in).unwrap();
+    let data = if cldr {
+        KEYS_CLDR.as_str()
+    } else {
+        KEYS_DUCET.as_str()
+    };
 
     let mut map: FxHashMap<Vec<u32>, Vec<u32>> = FxHashMap::default();
 
@@ -354,8 +364,11 @@ pub fn map_multi(keys: Tailoring) {
 pub fn map_sing(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let path_in = if cldr { KEYS_CLDR } else { KEYS_DUCET };
-    let data = std::fs::read_to_string(path_in).unwrap();
+    let data = if cldr {
+        KEYS_CLDR.as_str()
+    } else {
+        KEYS_DUCET.as_str()
+    };
 
     let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
 
@@ -436,7 +449,7 @@ pub fn map_variable() {
     // We only need to use DUCET for this, since (as far as I can tell from testing) every code
     // point in the CLDR table that has a variable weight or a zero primary weight, also has that
     // in DUCET. But the inverse is not true.
-    let data = std::fs::read_to_string(KEYS_DUCET).unwrap();
+    let data = KEYS_DUCET.as_str();
 
     'outer: for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
