@@ -15,7 +15,8 @@ use std::sync::{LazyLock, OnceLock};
 
 const KEYS_DUCET: &str = "unicode-data/cldr-46_1/allkeys.txt";
 pub const KEYS_CLDR: &str = "unicode-data/cldr-46_1/allkeys_CLDR.txt";
-const UNI_DATA: &str = "unicode-data/cldr-46_1/UnicodeData.txt";
+static UNI_DATA: LazyLock<String> =
+    LazyLock::new(|| std::fs::read_to_string("unicode-data/cldr-46_1/UnicodeData.txt").unwrap());
 
 const SEC_MAX: u16 = 0x126; // Largest secondary weight that is actually used
 const TER_MAX: u16 = 0x1E; // Largest tertiary weight that is actually used
@@ -46,11 +47,9 @@ macro_rules! regex {
 }
 
 pub fn map_decomps() {
-    let data = std::fs::read_to_string(UNI_DATA).unwrap();
-
     let mut map: FxHashMap<u32, Box<[u32]>> = FxHashMap::default();
 
-    for line in data.lines() {
+    for line in UNI_DATA.lines() {
         if line.is_empty() {
             continue;
         }
@@ -117,9 +116,7 @@ pub fn map_decomps() {
 }
 
 fn get_canonical_decomp(code_point: &str) -> Box<[u32]> {
-    let data = std::fs::read_to_string(UNI_DATA).unwrap();
-
-    for line in data.lines() {
+    for line in UNI_DATA.lines() {
         if line.starts_with(code_point) {
             let decomp_col = line.split(';').nth(5).unwrap();
 
@@ -165,11 +162,9 @@ fn get_canonical_decomp(code_point: &str) -> Box<[u32]> {
 }
 
 pub fn map_fcd() {
-    let data = std::fs::read_to_string(UNI_DATA).unwrap();
-
     let mut map: FxHashMap<u32, u16> = FxHashMap::default();
 
-    for line in data.lines() {
+    for line in UNI_DATA.lines() {
         if line.is_empty() {
             continue;
         }
