@@ -5,7 +5,7 @@
     clippy::regex_creation_in_loops
 )]
 
-use bincode::{config, encode_to_vec};
+use bincode::{config, decode_from_slice, encode_to_vec};
 use feruca::Tailoring;
 use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -40,7 +40,14 @@ const SHIFT_END: u16 = 0x72B6; // Large gap above this that we can use
 pub const SHIFT: u16 = 0x400;
 
 // The output of map_decomps is needed for map_fcd
-include!("../phf/decomp.rs");
+static DECOMP: LazyLock<FxHashMap<u32, Box<[u32]>>> = LazyLock::new(|| {
+    let data = std::fs::read("bincode/cldr-46_1/decomp").unwrap();
+    let decoded: FxHashMap<u32, Box<[u32]>> =
+        decode_from_slice(&data, config::standard()).unwrap().0;
+    decoded
+});
+// If we were to use the PHF map instead...
+// include!("../phf/decomp.rs");
 
 #[macro_export]
 macro_rules! regex {
@@ -115,6 +122,11 @@ pub fn map_decomps() {
         map.insert(code_point, final_decomp);
     }
 
+    // Write to bincode; this is what we actually use
+    let bytes = encode_to_vec(&map, config::standard()).unwrap();
+    std::fs::write("bincode/cldr-46_1/decomp", bytes).unwrap();
+
+    // Generate PHF map; not currently used, but worth studying
     let out_path = Path::new("phf/decomp.rs");
     let file = File::create(out_path).unwrap();
     let mut writer = BufWriter::new(file);
