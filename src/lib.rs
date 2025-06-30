@@ -91,19 +91,23 @@ pub fn map_decomps() {
         }
 
         let decomp_col = splits[5];
+        if decomp_col.contains('<') {
+            continue; // Non-canonical decomposition; continue
+        }
 
         let re = regex!(r"[\dA-F]{4,5}");
 
         let mut decomp: Vec<u32> = Vec::new();
-
         for m in re.find_iter(decomp_col) {
             let code_point = u32::from_str_radix(m.as_str(), 16).unwrap();
             decomp.push(code_point);
         }
 
-        let final_decomp = if decomp_col.contains('<') {
-            continue; // Non-canonical decomposition; continue
-        } else if decomp.len() > 1 {
+        if decomp.is_empty() {
+            continue; // No decomposition; continue
+        }
+
+        let final_decomp = if decomp.len() > 1 {
             // Multi-code-point canonical decomposition; recurse badly
             decomp
                 .into_iter()
@@ -112,11 +116,9 @@ pub fn map_decomps() {
                     get_canonical_decomp(&as_str)
                 })
                 .collect()
-        } else if decomp.len() == 1 {
+        } else {
             // Single-code-point canonical decomposition; recurse simply
             get_canonical_decomp(splits[0])
-        } else {
-            continue; // No decomposition; continue
         };
 
         map.insert(code_point, final_decomp);
