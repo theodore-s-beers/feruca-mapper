@@ -247,6 +247,11 @@ pub fn map_fcd() {
         map.insert(code_point, packed);
     }
 
+    // Write to bincode; this is what we actually use
+    let bytes = encode_to_vec(&map, config::standard()).unwrap();
+    std::fs::write("bincode/cldr-46_1/fcd", bytes).unwrap();
+
+    // Generate PHF map; not currently used, but worth studying
     let out_path = Path::new("phf/fcd.rs");
     let file = File::create(out_path).unwrap();
     let mut writer = BufWriter::new(file);
