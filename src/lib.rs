@@ -5,10 +5,15 @@
     clippy::regex_creation_in_loops
 )]
 
-use bincode::{config, decode_from_slice, encode_to_vec};
+use bincode::{config, encode_to_vec};
 use feruca::Tailoring;
 use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
+use std::{
+    fs::File,
+    io::{BufWriter, Write},
+    path::Path,
+};
 use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
 
 use std::sync::{LazyLock, OnceLock};
@@ -35,12 +40,7 @@ const SHIFT_END: u16 = 0x72B6; // Large gap above this that we can use
 pub const SHIFT: u16 = 0x400;
 
 // The output of map_decomps is needed for map_fcd
-static DECOMP: LazyLock<FxHashMap<u32, Box<[u32]>>> = LazyLock::new(|| {
-    let data = std::fs::read("bincode/cldr-46_1/decomp").unwrap();
-    let decoded: FxHashMap<u32, Box<[u32]>> =
-        decode_from_slice(&data, config::standard()).unwrap().0;
-    decoded
-});
+include!("../phf/decomp.rs");
 
 #[macro_export]
 macro_rules! regex {
@@ -115,8 +115,36 @@ pub fn map_decomps() {
         map.insert(code_point, final_decomp);
     }
 
-    let bytes = encode_to_vec(&map, config::standard()).unwrap();
-    std::fs::write("bincode/cldr-46_1/decomp", bytes).unwrap();
+    let out_path = Path::new("phf/decomp.rs");
+    let file = File::create(out_path).expect("Failed to create output file");
+    let mut writer = BufWriter::new(file);
+
+    let mut entries: Vec<_> = map.into_iter().collect();
+    entries.sort_by_key(|&(k, _)| k);
+
+    let mut builder = phf_codegen::Map::new();
+
+    for (key, value) in entries {
+        let value_str = format!(
+            "&[{}]",
+            value
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+
+        builder.entry(key, value_str);
+    }
+
+    let phf_map = builder.build();
+
+    writeln!(writer, "#[allow(clippy::unreadable_literal)]").unwrap();
+    writeln!(
+        writer,
+        "static DECOMP: phf::Map<u32, &'static [u32]> = {phf_map};"
+    )
+    .unwrap();
 }
 
 fn get_canonical_decomp(code_point: &str) -> Box<[u32]> {

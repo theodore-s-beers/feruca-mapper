@@ -6,6 +6,8 @@ edition = "2024"
 [dependencies]
 bincode = "2.0.1"
 feruca = { git = "https://github.com/theodore-s-beers/feruca" }
+phf = "0.12.1"
+phf_codegen = "0.12.1"
 regex = "1.11.1"
 rustc-hash = "2.1.1"
 unicode-canonical-combining-class = "1.0.0"
