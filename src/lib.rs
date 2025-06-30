@@ -127,8 +127,8 @@ pub fn map_decomps() {
     std::fs::write("bincode/cldr-46_1/decomp", bytes).unwrap();
 
     // Generate PHF map; not currently used, but worth studying
-    let out_path = Path::new("phf/decomp.rs");
-    let file = File::create(out_path).unwrap();
+    let path_out = Path::new("phf/decomp.rs");
+    let file = File::create(path_out).unwrap();
     let mut writer = BufWriter::new(file);
 
     let mut builder = phf_codegen::Map::new();
@@ -252,8 +252,8 @@ pub fn map_fcd() {
     std::fs::write("bincode/cldr-46_1/fcd", bytes).unwrap();
 
     // Generate PHF map; not currently used, but worth studying
-    let out_path = Path::new("phf/fcd.rs");
-    let file = File::create(out_path).unwrap();
+    let path_out = Path::new("phf/fcd.rs");
+    let file = File::create(path_out).unwrap();
     let mut writer = BufWriter::new(file);
 
     let mut builder = phf_codegen::Map::new();
