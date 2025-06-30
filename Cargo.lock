@@ -65,7 +65,6 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "feruca",
- "phf",
  "phf_codegen",
  "regex",
  "rustc-hash",
@@ -77,16 +76,6 @@ name = "memchr"
 version = "2.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a282da65faaf38286cf3be983213fcf1d2e2a58700e808f83f4ea9a4804bc0"
-
-[[package]]
-name = "phf"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "913273894cec178f401a31ec4b656318d95473527be05c0752cc41cdc32be8b7"
-dependencies = [
- "phf_shared",
- "serde",
-]
 
 [[package]]
 name = "phf_codegen"
