@@ -116,15 +116,12 @@ pub fn map_decomps() {
     }
 
     let out_path = Path::new("phf/decomp.rs");
-    let file = File::create(out_path).expect("Failed to create output file");
+    let file = File::create(out_path).unwrap();
     let mut writer = BufWriter::new(file);
-
-    let mut entries: Vec<_> = map.into_iter().collect();
-    entries.sort_by_key(|&(k, _)| k);
 
     let mut builder = phf_codegen::Map::new();
 
-    for (key, value) in entries {
+    for (key, value) in map {
         let value_str = format!(
             "&[{}]",
             value
@@ -238,8 +235,18 @@ pub fn map_fcd() {
         map.insert(code_point, packed);
     }
 
-    let bytes = encode_to_vec(&map, config::standard()).unwrap();
-    std::fs::write("bincode/cldr-46_1/fcd", bytes).unwrap();
+    let out_path = Path::new("phf/fcd.rs");
+    let file = File::create(out_path).unwrap();
+    let mut writer = BufWriter::new(file);
+
+    let mut builder = phf_codegen::Map::new();
+    for (key, value) in map {
+        builder.entry(key, value.to_string());
+    }
+
+    let phf_map = builder.build();
+    writeln!(writer, "#[allow(clippy::unreadable_literal)]").unwrap();
+    writeln!(writer, "static FCD: phf::Map<u32, u16> = {phf_map};").unwrap();
 }
 
 pub fn map_low(keys: Tailoring) {
