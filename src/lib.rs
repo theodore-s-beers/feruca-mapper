@@ -9,6 +9,11 @@ use bincode::{config, decode_from_slice, encode_to_vec};
 use feruca::Tailoring;
 use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
+use std::{
+    fs::File,
+    io::{BufWriter, Write},
+    path::Path,
+};
 use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
 
 use std::sync::{LazyLock, OnceLock};
@@ -41,6 +46,8 @@ static DECOMP: LazyLock<FxHashMap<u32, Box<[u32]>>> = LazyLock::new(|| {
         decode_from_slice(&data, config::standard()).unwrap().0;
     decoded
 });
+// If we were to use the PHF map instead...
+// include!("../phf/decomp.rs");
 
 #[macro_export]
 macro_rules! regex {
@@ -115,8 +122,38 @@ pub fn map_decomps() {
         map.insert(code_point, final_decomp);
     }
 
+    // Write to bincode; this is what we actually use
     let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/decomp", bytes).unwrap();
+
+    // Generate PHF map; not currently used, but worth studying
+    let path_out = Path::new("phf/decomp.rs");
+    let file = File::create(path_out).unwrap();
+    let mut writer = BufWriter::new(file);
+
+    let mut builder = phf_codegen::Map::new();
+
+    for (key, value) in map {
+        let value_str = format!(
+            "&[{}]",
+            value
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+
+        builder.entry(key, value_str);
+    }
+
+    let phf_map = builder.build();
+
+    writeln!(writer, "#[allow(clippy::unreadable_literal)]").unwrap();
+    writeln!(
+        writer,
+        "static DECOMP: phf::Map<u32, &'static [u32]> = {phf_map};"
+    )
+    .unwrap();
 }
 
 fn get_canonical_decomp(code_point: &str) -> Box<[u32]> {
@@ -210,8 +247,23 @@ pub fn map_fcd() {
         map.insert(code_point, packed);
     }
 
+    // Write to bincode; this is what we actually use
     let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/fcd", bytes).unwrap();
+
+    // Generate PHF map; not currently used, but worth studying
+    let path_out = Path::new("phf/fcd.rs");
+    let file = File::create(path_out).unwrap();
+    let mut writer = BufWriter::new(file);
+
+    let mut builder = phf_codegen::Map::new();
+    for (key, value) in map {
+        builder.entry(key, value.to_string());
+    }
+
+    let phf_map = builder.build();
+    writeln!(writer, "#[allow(clippy::unreadable_literal)]").unwrap();
+    writeln!(writer, "static FCD: phf::Map<u32, u16> = {phf_map};").unwrap();
 }
 
 pub fn map_low(keys: Tailoring) {
