@@ -189,15 +189,13 @@ fn get_canonical_decomp(code_point: &str) -> Box<[u32]> {
             }
 
             // Further multiple-code-point decomposition; recurse badly
-            if decomp.len() > 1 {
-                return decomp
-                    .into_iter()
-                    .flat_map(|c| {
-                        let as_str = format!("{c:04X}");
-                        get_canonical_decomp(&as_str)
-                    })
-                    .collect();
-            }
+            return decomp
+                .into_iter()
+                .flat_map(|c| {
+                    let as_str = format!("{c:04X}");
+                    get_canonical_decomp(&as_str)
+                })
+                .collect();
         }
     }
 
