@@ -162,6 +162,10 @@ fn get_canonical_decomp(code_point: &str) -> Box<[u32]> {
     for line in UNI_DATA.lines() {
         if line.starts_with(code_point) {
             let decomp_col = line.split(';').nth(5).unwrap();
+            if decomp_col.is_empty() {
+                // No further decomposition; return the code point itself
+                return vec![u32::from_str_radix(code_point, 16).unwrap()].into_boxed_slice();
+            }
 
             // Further decomposition is non-canonical; return the code point itself
             if decomp_col.contains('<') {
@@ -171,10 +175,17 @@ fn get_canonical_decomp(code_point: &str) -> Box<[u32]> {
             let re = regex!(r"[\dA-F]{4,5}");
 
             let mut decomp: Vec<u32> = Vec::new();
-
             for m in re.find_iter(decomp_col) {
                 let cp_val = u32::from_str_radix(m.as_str(), 16).unwrap();
                 decomp.push(cp_val);
+            }
+
+            assert!(!decomp_col.is_empty());
+
+            // Further single-code-point decomposition; recurse simply
+            if decomp.len() == 1 {
+                let as_str = format!("{:04X}", decomp[0]);
+                return get_canonical_decomp(&as_str);
             }
 
             // Further multiple-code-point decomposition; recurse badly
@@ -187,15 +198,6 @@ fn get_canonical_decomp(code_point: &str) -> Box<[u32]> {
                     })
                     .collect();
             }
-
-            // Further single-code-point decomposition; recurse simply
-            if decomp.len() == 1 {
-                let as_str = format!("{:04X}", decomp[0]);
-                return get_canonical_decomp(&as_str);
-            }
-
-            // No further decomposition; return the code point itself
-            return vec![u32::from_str_radix(code_point, 16).unwrap()].into_boxed_slice();
         }
     }
 
