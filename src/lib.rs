@@ -91,6 +91,10 @@ pub fn map_decomps() {
         }
 
         let decomp_col = splits[5];
+        if decomp_col.is_empty() {
+            continue; // No decomposition; continue
+        }
+
         if decomp_col.contains('<') {
             continue; // Non-canonical decomposition; continue
         }
@@ -103,11 +107,12 @@ pub fn map_decomps() {
             decomp.push(code_point);
         }
 
-        if decomp.is_empty() {
-            continue; // No decomposition; continue
-        }
+        assert!(!decomp.is_empty());
 
-        let final_decomp = if decomp.len() > 1 {
+        let final_decomp = if decomp.len() == 1 {
+            // Single-code-point canonical decomposition; recurse simply
+            get_canonical_decomp(splits[0])
+        } else {
             // Multi-code-point canonical decomposition; recurse badly
             decomp
                 .into_iter()
@@ -116,9 +121,6 @@ pub fn map_decomps() {
                     get_canonical_decomp(&as_str)
                 })
                 .collect()
-        } else {
-            // Single-code-point canonical decomposition; recurse simply
-            get_canonical_decomp(splits[0])
         };
 
         map.insert(code_point, final_decomp);
@@ -180,7 +182,7 @@ fn get_canonical_decomp(code_point: &str) -> Box<[u32]> {
                 decomp.push(cp_val);
             }
 
-            assert!(!decomp_col.is_empty());
+            assert!(!decomp.is_empty());
 
             // Further single-code-point decomposition; recurse simply
             if decomp.len() == 1 {
