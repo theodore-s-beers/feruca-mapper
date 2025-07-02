@@ -231,6 +231,9 @@ pub fn map_fcd() {
         let last_cc = get_ccc(canon_decomp[canon_decomp.len() - 1]) as u8;
 
         let packed = ((first_cc as u16) << 8) | (last_cc as u16);
+        if packed == 0 {
+            continue;
+        }
 
         map.insert(code_point, packed);
     }
