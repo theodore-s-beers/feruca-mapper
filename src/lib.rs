@@ -12,6 +12,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use std::{
     fs::File,
     io::{BufWriter, Write},
+    ops::RangeInclusive,
     path::Path,
 };
 use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
@@ -38,6 +39,25 @@ pub const BUMP: u16 = 1;
 const SHIFT_START: u16 = 0x2380; // Latin script begins
 const SHIFT_END: u16 = 0x72B6; // Large gap above this that we can use
 pub const SHIFT: u16 = 0x400;
+
+// Ignored code point ranges for decompositions and FCD
+const IGNORED_RANGES: [RangeInclusive<u32>; 15] = [
+    0x3400..=0x4DBF,
+    0x4E00..=0x9FFF,
+    0xAC00..=0xD7A3,
+    0xD800..=0xDFFF,
+    0xE000..=0xF8FF,
+    0x17000..=0x187F7,
+    0x18D00..=0x18D08,
+    0x20000..=0x2A6DF,
+    0x2A700..=0x2B738,
+    0x2B740..=0x2B81D,
+    0x2B820..=0x2CEA1,
+    0x2CEB0..=0x2EBE0,
+    0x30000..=0x3134A,
+    0xF0000..=0xFFFFD,
+    0x10_0000..=0x10_FFFD,
+];
 
 // The output of map_decomps is needed for map_fcd
 static DECOMP: LazyLock<FxHashMap<u32, Box<[u32]>>> = LazyLock::new(|| {
@@ -68,25 +88,7 @@ pub fn map_decomps() {
         let splits: Vec<&str> = line.split(';').collect();
 
         let code_point = u32::from_str_radix(splits[0], 16).unwrap();
-
-        // Ignore these ranges
-        if (0x3400..=0x4DBF).contains(&code_point) // CJK ext A
-            || (0x4E00..=0x9FFF).contains(&code_point) // CJK
-            || (0xAC00..=0xD7A3).contains(&code_point)  // Hangul
-            || (0xD800..=0xDFFF).contains(&code_point) // Surrogates
-            || (0xE000..=0xF8FF).contains(&code_point)  // Private use
-            || (0x17000..=0x187F7).contains(&code_point) // Tangut
-            || (0x18D00..=0x18D08).contains(&code_point) // Tangut suppl
-            || (0x20000..=0x2A6DF).contains(&code_point) // CJK ext B
-            || (0x2A700..=0x2B738).contains(&code_point) // CJK ext C
-            || (0x2B740..=0x2B81D).contains(&code_point) // CJK ext D
-            || (0x2B820..=0x2CEA1).contains(&code_point) // CJK ext E
-            || (0x2CEB0..=0x2EBE0).contains(&code_point) // CJK ext F
-            || (0x30000..=0x3134A).contains(&code_point) // CJK ext G
-            // Planes 15 and 16, private use
-            || (0xF0000..=0xFFFFD).contains(&code_point)
-            || (0x10_0000..=0x10_FFFD).contains(&code_point)
-        {
+        if IGNORED_RANGES.iter().any(|r| r.contains(&code_point)) {
             continue;
         }
 
@@ -217,25 +219,7 @@ pub fn map_fcd() {
         let left_of_semicolon = line.split(';').next().unwrap();
 
         let code_point = u32::from_str_radix(left_of_semicolon, 16).unwrap();
-
-        // Ignore these ranges
-        if (0x3400..=0x4DBF).contains(&code_point) // CJK ext A
-            || (0x4E00..=0x9FFF).contains(&code_point) // CJK
-            || (0xAC00..=0xD7A3).contains(&code_point)  // Hangul
-            || (0xD800..=0xDFFF).contains(&code_point) // Surrogates
-            || (0xE000..=0xF8FF).contains(&code_point)  // Private use
-            || (0x17000..=0x187F7).contains(&code_point) // Tangut
-            || (0x18D00..=0x18D08).contains(&code_point) // Tangut suppl
-            || (0x20000..=0x2A6DF).contains(&code_point) // CJK ext B
-            || (0x2A700..=0x2B738).contains(&code_point) // CJK ext C
-            || (0x2B740..=0x2B81D).contains(&code_point) // CJK ext D
-            || (0x2B820..=0x2CEA1).contains(&code_point) // CJK ext E
-            || (0x2CEB0..=0x2EBE0).contains(&code_point) // CJK ext F
-            || (0x30000..=0x3134A).contains(&code_point) // CJK ext G
-            || (0xF0000..=0xFFFFD).contains(&code_point) // Plane 15 private use
-            // Plane 16 private use
-            || (1_048_576..=1_114_109).contains(&code_point)
-        {
+        if IGNORED_RANGES.iter().any(|r| r.contains(&code_point)) {
             continue;
         }
 
