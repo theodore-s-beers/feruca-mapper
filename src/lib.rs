@@ -128,6 +128,10 @@ pub fn map_decomps() {
         map.insert(code_point, final_decomp);
     }
 
+    // Write to JSON for debugging
+    let json_bytes = serde_json::to_vec(&map).unwrap();
+    std::fs::write("json/cldr-46_1/decomp.json", json_bytes).unwrap();
+
     // Write to bincode; this is what we actually use
     let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/decomp", bytes).unwrap();
@@ -238,6 +242,10 @@ pub fn map_fcd() {
         map.insert(code_point, packed);
     }
 
+    // Write to JSON for debugging
+    let json_bytes = serde_json::to_vec(&map).unwrap();
+    std::fs::write("json/cldr-46_1/fcd.json", json_bytes).unwrap();
+
     // Write to bincode; this is what we actually use
     let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/fcd", bytes).unwrap();
@@ -311,6 +319,12 @@ pub fn map_low(keys: Tailoring) {
                 break;
             }
         }
+    }
+
+    // Write DUCET version to JSON for debugging
+    if !cldr {
+        let json_bytes = serde_json::to_vec(&map).unwrap();
+        std::fs::write("json/cldr-46_1/low.json", json_bytes).unwrap();
     }
 
     let path_out = if cldr {
@@ -472,16 +486,23 @@ pub fn map_sing(keys: Tailoring) {
         map.insert(k, v);
     }
 
+    let boxed: FxHashMap<u32, Box<[u32]>> = map
+        .into_iter()
+        .map(|(k, v)| (k, v.into_boxed_slice()))
+        .collect();
+
+    // Write DUCET version to JSON for debugging
+    if !cldr {
+        let json_bytes = serde_json::to_vec(&boxed).unwrap();
+        std::fs::write("json/cldr-46_1/singles.json", json_bytes).unwrap();
+    }
+
     let path_out = if cldr {
         "bincode/cldr-46_1/singles_cldr"
     } else {
         "bincode/cldr-46_1/singles"
     };
 
-    let boxed: FxHashMap<u32, Box<[u32]>> = map
-        .into_iter()
-        .map(|(k, v)| (k, v.into_boxed_slice()))
-        .collect();
     let bytes = encode_to_vec(&boxed, config::standard()).unwrap();
     std::fs::write(path_out, bytes).unwrap();
 }
@@ -537,6 +558,10 @@ pub fn map_variable() {
             }
         }
     }
+
+    // Write to JSON for debugging
+    let json_bytes = serde_json::to_vec(&set).unwrap();
+    std::fs::write("json/cldr-46_1/variable.json", json_bytes).unwrap();
 
     let bytes = encode_to_vec(&set, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/variable", bytes).unwrap();

@@ -9,4 +9,5 @@ feruca = { git = "https://github.com/theodore-s-beers/feruca" }
 phf_codegen = "0.12.1"
 regex = "1.11.1"
 rustc-hash = "2.1.1"
+serde_json = "1.0.140"
 unicode-canonical-combining-class = "1.0.0"
