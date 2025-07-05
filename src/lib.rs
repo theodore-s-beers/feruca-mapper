@@ -78,21 +78,23 @@ macro_rules! regex {
 }
 
 pub fn map_decomps() {
-    let mut map: FxHashMap<u32, Box<[u32]>> = FxHashMap::default();
+    let mut listed: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
+    let mut canonical: FxHashMap<u32, Box<[u32]>> = FxHashMap::default();
 
+    // First pass: collect listed decompositions
     for line in UNI_DATA.lines() {
         if line.is_empty() {
             continue;
         }
 
-        let splits: Vec<&str> = line.split(';').collect();
+        let fields: Vec<&str> = line.split(';').collect();
 
-        let code_point = u32::from_str_radix(splits[0], 16).unwrap();
+        let code_point = u32::from_str_radix(fields[0], 16).unwrap();
         if IGNORED_RANGES.iter().any(|r| r.contains(&code_point)) {
             continue;
         }
 
-        let decomp_col = splits[5];
+        let decomp_col = fields[5];
         if decomp_col.is_empty() {
             continue; // No decomposition; continue
         }
@@ -111,29 +113,31 @@ pub fn map_decomps() {
 
         assert!(!decomp.is_empty());
 
+        listed.insert(code_point, decomp);
+    }
+
+    // Second pass: collect canonical decompositions
+    for (code_point, decomp) in &listed {
         let final_decomp = if decomp.len() == 1 {
             // Single-code-point canonical decomposition; recurse simply
-            get_canonical_decomp(splits[0])
+            get_canonical_decomp(&listed, decomp[0])
         } else {
             // Multi-code-point canonical decomposition; recurse badly
             decomp
-                .into_iter()
-                .flat_map(|c| {
-                    let as_str = format!("{c:04X}");
-                    get_canonical_decomp(&as_str)
-                })
+                .iter()
+                .flat_map(|c| get_canonical_decomp(&listed, *c))
                 .collect()
         };
 
-        map.insert(code_point, final_decomp);
+        canonical.insert(*code_point, final_decomp);
     }
 
     // Write to JSON for debugging
-    let json_bytes = serde_json::to_vec(&map).unwrap();
+    let json_bytes = serde_json::to_vec(&canonical).unwrap();
     std::fs::write("json/cldr-46_1/decomp.json", json_bytes).unwrap();
 
     // Write to bincode; this is what we actually use
-    let bytes = encode_to_vec(&map, config::standard()).unwrap();
+    let bytes = encode_to_vec(&canonical, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/decomp", bytes).unwrap();
 
     // Generate PHF map; not currently used, but worth studying
@@ -143,7 +147,7 @@ pub fn map_decomps() {
 
     let mut builder = phf_codegen::Map::new();
 
-    for (key, value) in map {
+    for (key, value) in canonical {
         let value_str = format!(
             "&[{}]",
             value
@@ -166,50 +170,23 @@ pub fn map_decomps() {
     .unwrap();
 }
 
-fn get_canonical_decomp(code_point: &str) -> Box<[u32]> {
-    for line in UNI_DATA.lines() {
-        if line.starts_with(code_point) {
-            let decomp_col = line.split(';').nth(5).unwrap();
-            if decomp_col.is_empty() {
-                // No further decomposition; return the code point itself
-                return vec![u32::from_str_radix(code_point, 16).unwrap()].into_boxed_slice();
-            }
-
-            // Further decomposition is non-canonical; return the code point itself
-            if decomp_col.contains('<') {
-                return vec![u32::from_str_radix(code_point, 16).unwrap()].into_boxed_slice();
-            }
-
-            let re = regex!(r"[\dA-F]{4,5}");
-
-            let mut decomp: Vec<u32> = Vec::new();
-            for m in re.find_iter(decomp_col) {
-                let cp_val = u32::from_str_radix(m.as_str(), 16).unwrap();
-                decomp.push(cp_val);
-            }
-
-            assert!(!decomp.is_empty());
-
-            // Further single-code-point decomposition; recurse simply
+fn get_canonical_decomp(listed: &FxHashMap<u32, Vec<u32>>, code_point: u32) -> Box<[u32]> {
+    listed.get(&code_point).map_or_else(
+        || vec![code_point].into_boxed_slice(), // No further decomp; return code point itself
+        |decomp| {
             if decomp.len() == 1 {
-                let as_str = format!("{:04X}", decomp[0]);
-                return get_canonical_decomp(&as_str);
+                // Single-code-point decomp; return it directly
+                vec![decomp[0]].into_boxed_slice()
+            } else {
+                // Multi-code-point decomp; recurse badly
+                decomp
+                    .iter()
+                    .flat_map(|c| get_canonical_decomp(listed, *c))
+                    .collect::<Vec<u32>>()
+                    .into_boxed_slice()
             }
-
-            // Further multiple-code-point decomposition; recurse badly
-            return decomp
-                .into_iter()
-                .flat_map(|c| {
-                    let as_str = format!("{c:04X}");
-                    get_canonical_decomp(&as_str)
-                })
-                .collect();
-        }
-    }
-
-    // This means we followed a canonical decomposition to a single code point that was then not
-    // found in the first column of the table. Return it, I guess?
-    vec![u32::from_str_radix(code_point, 16).unwrap()].into_boxed_slice()
+        },
+    )
 }
 
 pub fn map_fcd() {
