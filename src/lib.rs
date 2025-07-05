@@ -321,20 +321,29 @@ pub fn map_low(keys: Tailoring) {
         }
     }
 
-    // Write DUCET version to JSON for debugging
-    if !cldr {
-        let json_bytes = serde_json::to_vec(&map).unwrap();
-        std::fs::write("json/cldr-46_1/low.json", json_bytes).unwrap();
+    // Since we have 181 code points with values in the range 0..183, we can put the associated
+    // collation weights into an array such that the index is the code point value.
+
+    let mut arr = [0u32; 183];
+    for kv in &map {
+        arr[*kv.0 as usize] = *kv.1;
     }
 
+    for (i, &v) in arr.iter().enumerate() {
+        let map_val = map.get(&u32::try_from(i).unwrap()).unwrap_or(&0);
+        assert_eq!(v, *map_val);
+    }
+
+    // Write to JSON only in this case; we'll copy-paste the values into feruca source code
+
     let path_out = if cldr {
-        "bincode/cldr-46_1/low_cldr"
+        "json/cldr-46_1/low_cldr.json"
     } else {
-        "bincode/cldr-46_1/low"
+        "json/cldr-46_1/low.json"
     };
 
-    let bytes = encode_to_vec(&map, config::standard()).unwrap();
-    std::fs::write(path_out, bytes).unwrap();
+    let json_bytes = serde_json::to_vec(arr.as_slice()).unwrap();
+    std::fs::write(path_out, json_bytes).unwrap();
 }
 
 pub fn map_multi(keys: Tailoring) {
@@ -513,9 +522,7 @@ pub fn map_variable() {
     // We only need to use DUCET for this, since (as far as I can tell from testing) every code
     // point in the CLDR table that has a variable weight or a zero primary weight, also has that
     // in DUCET. But the inverse is not true.
-    let data = KEYS_DUCET.as_str();
-
-    'outer: for line in data.lines() {
+    'outer: for line in KEYS_DUCET.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
             continue;
         }
