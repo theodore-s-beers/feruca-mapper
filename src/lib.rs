@@ -268,11 +268,7 @@ pub fn map_fcd() {
 pub fn map_low(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let data = if cldr {
-        KEYS_CLDR.as_str()
-    } else {
-        KEYS_DUCET.as_str()
-    };
+    let data = if cldr { &KEYS_CLDR } else { &KEYS_DUCET };
 
     let re_set_of_weights = regex!(r"[*.\dA-F]{15}");
     let re_individual_weight = regex!(r"[\dA-F]{4}");
@@ -349,11 +345,7 @@ pub fn map_low(keys: Tailoring) {
 pub fn map_multi(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let data = if cldr {
-        KEYS_CLDR.as_str()
-    } else {
-        KEYS_DUCET.as_str()
-    };
+    let data = if cldr { &KEYS_CLDR } else { &KEYS_DUCET };
 
     let mut map: FxHashMap<Vec<u32>, Vec<u32>> = FxHashMap::default();
 
@@ -430,11 +422,7 @@ pub fn map_multi(keys: Tailoring) {
 pub fn map_sing(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
-    let data = if cldr {
-        KEYS_CLDR.as_str()
-    } else {
-        KEYS_DUCET.as_str()
-    };
+    let data = if cldr { &KEYS_CLDR } else { &KEYS_DUCET };
 
     let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
 
