@@ -178,7 +178,7 @@ fn get_canonical_decomp(listed: &FxHashMap<u32, Vec<u32>>, code_point: u32) -> B
                 // Single-code-point decomp; return it directly
                 vec![decomp[0]].into_boxed_slice()
             } else {
-                // Multi-code-point decomp; recurse badly
+                // Multi-code-point decomp; recurse
                 decomp
                     .iter()
                     .flat_map(|c| get_canonical_decomp(listed, *c))
