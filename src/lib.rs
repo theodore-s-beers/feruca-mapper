@@ -275,46 +275,49 @@ pub fn map_low(keys: Tailoring) {
 
     let mut map: FxHashMap<u32, u32> = FxHashMap::default();
 
-    // This is for code points under 183 (decimal)
-    for i in 0..183 {
-        // Skip capital and lowercase L; it's problematic
-        if i == 76 || i == 108 {
+    for line in data.lines() {
+        if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
             continue;
         }
 
-        let as_hex = format!("{i:04X}");
+        let mut split_at_semicolon = line.split(';');
+        let left_of_semicolon = split_at_semicolon.next().unwrap();
+        let right_of_semicolon = split_at_semicolon.next().unwrap();
+        let left_of_hash = right_of_semicolon.split('#').next().unwrap();
 
-        // Find the line. Yeah, this is slow, but whatever.
-        for line in data.lines() {
-            if line.starts_with(&as_hex) {
-                let set = re_set_of_weights.find(line).unwrap().as_str();
+        let re_key = regex!(r"[\dA-F]{4,5}");
 
-                let variable = set.starts_with('*');
+        let first_cp = re_key.find(left_of_semicolon).unwrap().as_str();
+        let cp = u32::from_str_radix(first_cp, 16).unwrap();
 
-                let mut weights = re_individual_weight.find_iter(set);
-
-                let mut primary =
-                    u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
-                if cldr && (BUMP_START..=BUMP_END).contains(&primary) {
-                    primary += BUMP;
-                }
-                if cldr && (SHIFT_START..=SHIFT_END).contains(&primary) {
-                    primary += SHIFT;
-                }
-
-                let secondary = u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
-                assert!(secondary <= SEC_MAX);
-
-                let tertiary = u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
-                assert!(tertiary <= TER_MAX);
-
-                let packed = pack_weights(variable, primary, secondary, tertiary);
-
-                map.insert(i, packed);
-
-                break;
-            }
+        // Skip capital and lowercase L; it's problematic
+        if cp > 0xB6 || cp == 0x4C || cp == 0x6C {
+            continue;
         }
+
+        let first_set = re_set_of_weights.find(left_of_hash).unwrap().as_str();
+
+        let variable = first_set.starts_with('*');
+
+        let mut weights = re_individual_weight.find_iter(first_set);
+
+        let mut primary = u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
+        if cldr && (BUMP_START..=BUMP_END).contains(&primary) {
+            primary += BUMP;
+        }
+        if cldr && (SHIFT_START..=SHIFT_END).contains(&primary) {
+            primary += SHIFT;
+        }
+
+        let secondary = u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
+        assert!(secondary <= SEC_MAX);
+
+        let tertiary = u16::from_str_radix(weights.next().unwrap().as_str(), 16).unwrap();
+        assert!(tertiary <= TER_MAX);
+
+        let packed = pack_weights(variable, primary, secondary, tertiary);
+
+        map.insert(cp, packed);
     }
 
     // Since we have 181 code points with values in the range 0..183, we can put the associated
