@@ -397,6 +397,16 @@ pub fn map_multi(keys: Tailoring) {
         .collect();
     let bytes = encode_to_vec(&boxed, config::standard()).unwrap();
     std::fs::write(path_out, bytes).unwrap();
+
+    // Write DUCET version to JSON for debugging
+    if !cldr {
+        let json_map: FxHashMap<String, Box<[u32]>> = boxed
+            .into_iter()
+            .map(|(k, v)| (format!("{k:?}"), v))
+            .collect();
+        let json_bytes = serde_json::to_vec(&json_map).unwrap();
+        std::fs::write("json/cldr-46_1/multis.json", json_bytes).unwrap();
+    }
 }
 
 pub fn map_sing(keys: Tailoring) {
