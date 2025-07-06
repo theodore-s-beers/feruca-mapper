@@ -327,7 +327,7 @@ pub fn map_multi(keys: Tailoring) {
 
     let data = if cldr { &KEYS_CLDR } else { &KEYS_DUCET };
 
-    let mut map: FxHashMap<Vec<u32>, Vec<u32>> = FxHashMap::default();
+    let mut map: FxHashMap<u64, Box<[u32]>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
@@ -382,7 +382,7 @@ pub fn map_multi(keys: Tailoring) {
             v.push(weights);
         }
 
-        map.insert(k, v);
+        map.insert(pack_code_points(&k), v.into_boxed_slice());
     }
 
     let path_out = if cldr {
@@ -391,20 +391,11 @@ pub fn map_multi(keys: Tailoring) {
         "bincode/cldr-46_1/multis"
     };
 
-    let boxed: FxHashMap<Box<[u32]>, Box<[u32]>> = map
-        .into_iter()
-        .map(|(k, v)| (k.into_boxed_slice(), v.into_boxed_slice()))
-        .collect();
-    let bytes = encode_to_vec(&boxed, config::standard()).unwrap();
+    let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write(path_out, bytes).unwrap();
 
-    // Write DUCET version to JSON for debugging
     if !cldr {
-        let json_map: FxHashMap<String, Box<[u32]>> = boxed
-            .into_iter()
-            .map(|(k, v)| (format!("{k:?}"), v))
-            .collect();
-        let json_bytes = serde_json::to_vec(&json_map).unwrap();
+        let json_bytes = serde_json::to_vec(&map).unwrap();
         std::fs::write("json/cldr-46_1/multis.json", json_bytes).unwrap();
     }
 }
@@ -550,6 +541,19 @@ pub fn map_variable() {
 
     let bytes = encode_to_vec(&set, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/variable", bytes).unwrap();
+}
+
+#[must_use]
+pub fn pack_code_points(code_points: &[u32]) -> u64 {
+    match code_points.len() {
+        2 => (u64::from(code_points[0]) << 21) | u64::from(code_points[1]),
+        3 => {
+            (u64::from(code_points[0]) << 42)
+                | (u64::from(code_points[1]) << 21)
+                | u64::from(code_points[2])
+        }
+        _ => unreachable!(),
+    }
 }
 
 #[must_use]

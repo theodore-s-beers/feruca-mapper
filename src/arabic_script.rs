@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 
 use std::sync::OnceLock;
 
-use feruca_mapper::{KEYS_CLDR, pack_weights, regex, unpack_weights};
+use feruca_mapper::{KEYS_CLDR, pack_code_points, pack_weights, regex, unpack_weights};
 
 const FIRST_ARABIC_PRIMARY: u16 = 0x2A68; // 0621, "ARABIC LETTER HAMZA"
 const LAST_ARABIC_PRIMARY: u16 = 0x2B56; // 088E, "ARABIC VERTICAL TAIL"
@@ -16,7 +16,7 @@ pub fn map_arabic_script_multi() {
     // This is based on the CLDR table, of course
     let data = KEYS_CLDR.as_str();
 
-    let mut map: FxHashMap<Vec<u32>, Vec<u32>> = FxHashMap::default();
+    let mut map: FxHashMap<u64, Box<[u32]>> = FxHashMap::default();
 
     for line in data.lines() {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
@@ -91,14 +91,10 @@ pub fn map_arabic_script_multi() {
             }
         }
 
-        map.insert(k, v);
+        map.insert(pack_code_points(&k), v.into_boxed_slice());
     }
 
-    let boxed: FxHashMap<Box<[u32]>, Box<[u32]>> = map
-        .into_iter()
-        .map(|(k, v)| (k.into_boxed_slice(), v.into_boxed_slice()))
-        .collect();
-    let bytes = encode_to_vec(&boxed, config::standard()).unwrap();
+    let bytes = encode_to_vec(&map, config::standard()).unwrap();
     std::fs::write("bincode/cldr-46_1/tailoring/arabic_script_multi", bytes).unwrap();
 }
 
