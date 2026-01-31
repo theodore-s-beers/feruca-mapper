@@ -5,7 +5,6 @@
     clippy::regex_creation_in_loops
 )]
 
-use bincode::{config, decode_from_slice, encode_to_vec};
 use feruca::Tailoring;
 use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -62,9 +61,7 @@ const IGNORED_RANGES: [RangeInclusive<u32>; 15] = [
 // The output of map_decomps is needed for map_fcd
 static DECOMP: LazyLock<FxHashMap<u32, Box<[u32]>>> = LazyLock::new(|| {
     let data = std::fs::read("bincode/cldr-46_1/decomp").unwrap();
-    let decoded: FxHashMap<u32, Box<[u32]>> =
-        decode_from_slice(&data, config::standard()).unwrap().0;
-    decoded
+    postcard::from_bytes(&data).unwrap()
 });
 // If we were to use the PHF map instead...
 // include!("../phf/decomp.rs");
@@ -137,7 +134,7 @@ pub fn map_decomps() {
     std::fs::write("json/cldr-46_1/decomp.json", json_bytes).unwrap();
 
     // Write to bincode; this is what we actually use
-    let bytes = encode_to_vec(&canonical, config::standard()).unwrap();
+    let bytes = postcard::to_allocvec(&canonical).unwrap();
     std::fs::write("bincode/cldr-46_1/decomp", bytes).unwrap();
 
     // Generate PHF map; not currently used, but worth studying
@@ -224,7 +221,7 @@ pub fn map_fcd() {
     std::fs::write("json/cldr-46_1/fcd.json", json_bytes).unwrap();
 
     // Write to bincode; this is what we actually use
-    let bytes = encode_to_vec(&map, config::standard()).unwrap();
+    let bytes = postcard::to_allocvec(&map).unwrap();
     std::fs::write("bincode/cldr-46_1/fcd", bytes).unwrap();
 
     // Generate PHF map; not currently used, but worth studying
@@ -391,7 +388,7 @@ pub fn map_multi(keys: Tailoring) {
         "bincode/cldr-46_1/multis"
     };
 
-    let bytes = encode_to_vec(&map, config::standard()).unwrap();
+    let bytes = postcard::to_allocvec(&map).unwrap();
     std::fs::write(path_out, bytes).unwrap();
 
     if !cldr {
@@ -481,7 +478,7 @@ pub fn map_sing(keys: Tailoring) {
         "bincode/cldr-46_1/singles"
     };
 
-    let bytes = encode_to_vec(&boxed, config::standard()).unwrap();
+    let bytes = postcard::to_allocvec(&boxed).unwrap();
     std::fs::write(path_out, bytes).unwrap();
 }
 
@@ -539,7 +536,7 @@ pub fn map_variable() {
     let json_bytes = serde_json::to_vec(&set).unwrap();
     std::fs::write("json/cldr-46_1/variable.json", json_bytes).unwrap();
 
-    let bytes = encode_to_vec(&set, config::standard()).unwrap();
+    let bytes = postcard::to_allocvec(&set).unwrap();
     std::fs::write("bincode/cldr-46_1/variable", bytes).unwrap();
 }
 
