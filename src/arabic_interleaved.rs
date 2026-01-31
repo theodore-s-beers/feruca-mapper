@@ -1,6 +1,5 @@
 #![allow(clippy::regex_creation_in_loops)]
 
-use bincode::{config, encode_to_vec};
 use regex::Regex;
 use rustc_hash::FxHashMap;
 
@@ -133,7 +132,7 @@ pub fn map_arabic_interleaved_multi() {
         map.insert(pack_code_points(&k), v.into_boxed_slice());
     }
 
-    let bytes = encode_to_vec(&map, config::standard()).unwrap();
+    let bytes = postcard::to_allocvec(&map).unwrap();
     std::fs::write(
         "bincode/cldr-46_1/tailoring/arabic_interleaved_multi",
         bytes,
@@ -228,6 +227,6 @@ pub fn map_arabic_interleaved_sing() {
         .into_iter()
         .map(|(k, v)| (k, v.into_boxed_slice()))
         .collect();
-    let bytes = encode_to_vec(&boxed, config::standard()).unwrap();
+    let bytes = postcard::to_allocvec(&boxed).unwrap();
     std::fs::write("bincode/cldr-46_1/tailoring/arabic_interleaved_sing", bytes).unwrap();
 }
