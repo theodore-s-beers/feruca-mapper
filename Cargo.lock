@@ -91,6 +91,7 @@ dependencies = [
  "postcard",
  "regex",
  "rustc-hash",
+ "serde",
  "serde_json",
  "unicode-canonical-combining-class",
 ]

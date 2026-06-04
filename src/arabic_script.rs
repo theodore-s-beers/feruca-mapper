@@ -5,13 +5,41 @@ use rustc_hash::FxHashMap;
 
 use std::sync::OnceLock;
 
-use feruca_mapper::{KEYS_CLDR, pack_code_points, pack_weights, regex, unpack_weights};
+use feruca::Tailoring;
+use feruca_mapper::{
+    KEYS_CLDR, build_trie_table, collect_multis, collect_singles, pack_code_points, pack_weights,
+    regex, unpack_weights,
+};
 
 const FIRST_ARABIC_PRIMARY: u16 = 0x2A68; // 0621, "ARABIC LETTER HAMZA"
 const LAST_ARABIC_PRIMARY: u16 = 0x2B56; // 088E, "ARABIC VERTICAL TAIL"
 const OFFSET: u16 = 0x600; // This is tested below
 
-pub fn map_arabic_script_multi() {
+fn _map_arabic_script_multi() {
+    let map = collect_arabic_script_multis();
+    let bytes = postcard::to_allocvec(&map).unwrap();
+    std::fs::write("bincode/cldr-46_1/tailoring/arabic_script_multi", bytes).unwrap();
+}
+
+fn _map_arabic_script_sing() {
+    let map = collect_arabic_script_singles();
+    let bytes = postcard::to_allocvec(&map).unwrap();
+    std::fs::write("bincode/cldr-46_1/tailoring/arabic_script_sing", bytes).unwrap();
+}
+
+pub fn map_arabic_script_trie() {
+    let mut singles = collect_singles(Tailoring::default());
+    singles.extend(collect_arabic_script_singles());
+
+    let mut multis = collect_multis(Tailoring::default());
+    multis.extend(collect_arabic_script_multis());
+
+    let table = build_trie_table(&singles, &multis);
+    let bytes = postcard::to_allocvec(&table).unwrap();
+    std::fs::write("bincode/cldr-46_1/tailoring/arabic_script", bytes).unwrap();
+}
+
+fn collect_arabic_script_multis() -> FxHashMap<u64, Box<[u32]>> {
     // This is based on the CLDR table, of course
     let data = KEYS_CLDR.as_str();
 
@@ -93,11 +121,10 @@ pub fn map_arabic_script_multi() {
         map.insert(pack_code_points(&k), v.into_boxed_slice());
     }
 
-    let bytes = postcard::to_allocvec(&map).unwrap();
-    std::fs::write("bincode/cldr-46_1/tailoring/arabic_script_multi", bytes).unwrap();
+    map
 }
 
-pub fn map_arabic_script_sing() {
+fn collect_arabic_script_singles() -> FxHashMap<u32, Box<[u32]>> {
     // This is based on the CLDR table, of course
     let data = KEYS_CLDR.as_str();
 
@@ -181,12 +208,9 @@ pub fn map_arabic_script_sing() {
         map.insert(k, v);
     }
 
-    let boxed: FxHashMap<u32, Box<[u32]>> = map
-        .into_iter()
+    map.into_iter()
         .map(|(k, v)| (k, v.into_boxed_slice()))
-        .collect();
-    let bytes = postcard::to_allocvec(&boxed).unwrap();
-    std::fs::write("bincode/cldr-46_1/tailoring/arabic_script_sing", bytes).unwrap();
+        .collect()
 }
 
 #[cfg(test)]

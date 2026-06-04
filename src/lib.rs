@@ -8,8 +8,11 @@
 use feruca::Tailoring;
 use regex::Regex;
 use rustc_hash::{FxHashMap, FxHashSet};
+use serde::{Deserialize, Serialize};
 use std::{
+    collections::{HashMap, HashSet},
     fs::File,
+    hash::BuildHasher,
     io::{BufWriter, Write},
     ops::RangeInclusive,
     path::Path,
@@ -39,6 +42,24 @@ const SHIFT_START: u16 = 0x2380; // Latin script begins
 const SHIFT_END: u16 = 0x72B6; // Large gap above this that we can use
 pub const SHIFT: u16 = 0x400;
 
+const NO_ROW: u32 = u32::MAX;
+const CODE_POINT_COUNT: usize = 0x11_0000;
+const PAGE_SIZE: usize = 256;
+const PAGE_WORDS: usize = 4;
+pub const VARIABLE_EMPTY_PAGE: u16 = u16::MAX;
+pub const ENTRY_MISSING: u64 = 0;
+pub const ENTRY_SIMPLE: u64 = 1;
+pub const ENTRY_CONTRACTION: u64 = 2;
+const ENTRY_TAG_BITS: u64 = 2;
+const ENTRY_LEN_BITS: u64 = 16;
+const ENTRY_START_BITS: u64 = 32;
+const ENTRY_TAG_MASK: u64 = (1 << ENTRY_TAG_BITS) - 1;
+const ENTRY_LEN_MASK: u64 = (1 << ENTRY_LEN_BITS) - 1;
+const ENTRY_START_MASK: u64 = (1 << ENTRY_START_BITS) - 1;
+const ENTRY_LEN_SHIFT: u64 = ENTRY_TAG_BITS;
+const ENTRY_START_SHIFT: u64 = ENTRY_LEN_SHIFT + ENTRY_LEN_BITS;
+const ENTRY_META_SHIFT: u64 = ENTRY_START_SHIFT + ENTRY_START_BITS;
+
 // Ignored code point ranges for decompositions and FCD
 const IGNORED_RANGES: [RangeInclusive<u32>; 15] = [
     0x3400..=0x4DBF,
@@ -59,7 +80,7 @@ const IGNORED_RANGES: [RangeInclusive<u32>; 15] = [
 ];
 
 // The output of map_decomps is needed for map_fcd
-static DECOMP: LazyLock<FxHashMap<u32, Box<[u32]>>> = LazyLock::new(|| {
+static DECOMP: LazyLock<DecompTable> = LazyLock::new(|| {
     let data = std::fs::read("bincode/cldr-46_1/decomp").unwrap();
     postcard::from_bytes(&data).unwrap()
 });
@@ -129,12 +150,19 @@ pub fn map_decomps() {
         canonical.insert(*code_point, final_decomp);
     }
 
+    let mut sorted: Vec<(u32, Box<[u32]>)> = canonical
+        .iter()
+        .map(|(&code_point, decomp)| (code_point, decomp.clone()))
+        .collect();
+    sorted.sort_unstable_by_key(|&(code_point, _)| code_point);
+
     // Write to JSON for debugging
-    let json_bytes = serde_json::to_vec(&canonical).unwrap();
+    let json_bytes = serde_json::to_vec(&sorted).unwrap();
     std::fs::write("json/cldr-46_1/decomp.json", json_bytes).unwrap();
 
     // Write to bincode; this is what we actually use
-    let bytes = postcard::to_allocvec(&canonical).unwrap();
+    let table = build_decomp_table(&canonical);
+    let bytes = postcard::to_allocvec(&table).unwrap();
     std::fs::write("bincode/cldr-46_1/decomp", bytes).unwrap();
 
     // Generate PHF map; not currently used, but worth studying
@@ -165,6 +193,54 @@ pub fn map_decomps() {
         "static DECOMP: phf::Map<u32, &'static [u32]> = {phf_map};"
     )
     .unwrap();
+}
+
+#[must_use]
+pub fn build_decomp_table<S: BuildHasher>(map: &HashMap<u32, Box<[u32]>, S>) -> DecompTable {
+    let mut row_ids: FxHashMap<Box<[u32]>, (u32, u16)> = FxHashMap::default();
+    let mut values = Vec::new();
+    let mut raw_pages = vec![[0u64; PAGE_SIZE]; CODE_POINT_COUNT / PAGE_SIZE];
+
+    for (&code_point, decomp) in map {
+        let (start, len) = row_ids.get(decomp.as_ref()).copied().unwrap_or_else(|| {
+            let start = u32::try_from(values.len()).unwrap();
+            let len = u16::try_from(decomp.len()).unwrap();
+            values.extend_from_slice(decomp);
+            row_ids.insert(decomp.clone(), (start, len));
+            (start, len)
+        });
+
+        let page = usize::try_from(code_point >> 8).unwrap();
+        let offset = usize::try_from(code_point & 0xFF).unwrap();
+        raw_pages[page][offset] = u64::from(len) | (u64::from(start) << 16);
+    }
+
+    let mut page_index = Vec::with_capacity(raw_pages.len());
+    let mut page_ids: FxHashMap<Box<[u64]>, u16> = FxHashMap::default();
+    let mut entries = Vec::new();
+
+    for page in raw_pages {
+        if page == [0; PAGE_SIZE] {
+            page_index.push(VARIABLE_EMPTY_PAGE);
+            continue;
+        }
+
+        if let Some(page_id) = page_ids.get(page.as_slice()) {
+            page_index.push(*page_id);
+            continue;
+        }
+
+        let page_id = u16::try_from(page_ids.len()).unwrap();
+        page_index.push(page_id);
+        entries.extend_from_slice(&page);
+        page_ids.insert(page.into(), page_id);
+    }
+
+    DecompTable {
+        page_index: page_index.into_boxed_slice(),
+        entries: entries.into_boxed_slice(),
+        values: values.into_boxed_slice(),
+    }
 }
 
 fn get_canonical_decomp(listed: &FxHashMap<u32, Vec<u32>>, code_point: u32) -> Box<[u32]> {
@@ -201,7 +277,7 @@ pub fn map_fcd() {
             continue;
         }
 
-        let Some(canon_decomp) = DECOMP.get(&code_point) else {
+        let Some(canon_decomp) = DECOMP.get(code_point) else {
             continue;
         };
 
@@ -216,12 +292,19 @@ pub fn map_fcd() {
         map.insert(code_point, packed);
     }
 
+    let mut sorted: Vec<(u32, u16)> = map
+        .iter()
+        .map(|(&code_point, &value)| (code_point, value))
+        .collect();
+    sorted.sort_unstable_by_key(|&(code_point, _)| code_point);
+
     // Write to JSON for debugging
-    let json_bytes = serde_json::to_vec(&map).unwrap();
+    let json_bytes = serde_json::to_vec(&sorted).unwrap();
     std::fs::write("json/cldr-46_1/fcd.json", json_bytes).unwrap();
 
     // Write to bincode; this is what we actually use
-    let bytes = postcard::to_allocvec(&map).unwrap();
+    let table = build_fcd_table(&map);
+    let bytes = postcard::to_allocvec(&table).unwrap();
     std::fs::write("bincode/cldr-46_1/fcd", bytes).unwrap();
 
     // Generate PHF map; not currently used, but worth studying
@@ -237,6 +320,42 @@ pub fn map_fcd() {
     let phf_map = builder.build();
     writeln!(writer, "#[allow(clippy::unreadable_literal)]").unwrap();
     writeln!(writer, "static FCD: phf::Map<u32, u16> = {phf_map};").unwrap();
+}
+
+#[must_use]
+pub fn build_fcd_table<S: BuildHasher>(map: &HashMap<u32, u16, S>) -> FcdTable {
+    let mut raw_pages = vec![[0u16; PAGE_SIZE]; CODE_POINT_COUNT / PAGE_SIZE];
+    for (&code_point, &value) in map {
+        let page = usize::try_from(code_point >> 8).unwrap();
+        let offset = usize::try_from(code_point & 0xFF).unwrap();
+        raw_pages[page][offset] = value;
+    }
+
+    let mut page_index = Vec::with_capacity(raw_pages.len());
+    let mut page_ids: FxHashMap<Box<[u16]>, u16> = FxHashMap::default();
+    let mut pages = Vec::new();
+
+    for page in raw_pages {
+        if page == [0; PAGE_SIZE] {
+            page_index.push(VARIABLE_EMPTY_PAGE);
+            continue;
+        }
+
+        if let Some(page_id) = page_ids.get(page.as_slice()) {
+            page_index.push(*page_id);
+            continue;
+        }
+
+        let page_id = u16::try_from(page_ids.len()).unwrap();
+        page_index.push(page_id);
+        pages.extend_from_slice(&page);
+        page_ids.insert(page.into(), page_id);
+    }
+
+    FcdTable {
+        page_index: page_index.into_boxed_slice(),
+        pages: pages.into_boxed_slice(),
+    }
 }
 
 pub fn map_low(keys: Tailoring) {
@@ -319,7 +438,7 @@ pub fn map_low(keys: Tailoring) {
     std::fs::write(path_out, json_bytes).unwrap();
 }
 
-pub fn map_multi(keys: Tailoring) {
+fn _map_multi(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
     let data = if cldr { &KEYS_CLDR } else { &KEYS_DUCET };
@@ -397,7 +516,7 @@ pub fn map_multi(keys: Tailoring) {
     }
 }
 
-pub fn map_sing(keys: Tailoring) {
+fn _map_sing(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
 
     let data = if cldr { &KEYS_CLDR } else { &KEYS_DUCET };
@@ -482,6 +601,415 @@ pub fn map_sing(keys: Tailoring) {
     std::fs::write(path_out, bytes).unwrap();
 }
 
+#[derive(Serialize)]
+pub struct CollationTrieTable {
+    pub page_index: Box<[u16]>,
+    pub entries: Box<[u64]>,
+    pub contraction_meta: Box<[ContractionMeta]>,
+    pub edges: Box<[ContractionEdge]>,
+    pub weights: Box<[u32]>,
+}
+
+#[derive(Serialize)]
+pub struct ContractionMeta {
+    pub first_edge: u32,
+    pub edge_len: u16,
+    pub max_len: u8,
+}
+
+#[derive(Serialize)]
+pub struct ContractionEdge {
+    pub code_point: u32,
+    pub next_first_edge: u32,
+    pub weight_start: u32,
+    pub next_edge_len: u16,
+    pub weight_len: u16,
+}
+
+#[derive(Serialize)]
+pub struct WeightRow {
+    pub start: u32,
+    pub len: u16,
+}
+
+#[derive(Serialize)]
+pub struct VariableTable {
+    pub page_index: Box<[u16]>,
+    pub pages: Box<[u64]>,
+}
+
+#[derive(Serialize)]
+pub struct FcdTable {
+    pub page_index: Box<[u16]>,
+    pub pages: Box<[u16]>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct DecompTable {
+    pub page_index: Box<[u16]>,
+    pub entries: Box<[u64]>,
+    pub values: Box<[u32]>,
+}
+
+impl DecompTable {
+    #[must_use]
+    pub fn get(&self, code_point: u32) -> Option<&[u32]> {
+        let page = self.page_index[usize::try_from(code_point >> 8).unwrap()];
+        if page == VARIABLE_EMPTY_PAGE {
+            return None;
+        }
+
+        let offset = usize::try_from(code_point & 0xFF).unwrap();
+        let entry = self.entries[(usize::from(page) << 8) + offset];
+        let len = usize::from((entry & 0xFFFF) as u16);
+        if len == 0 {
+            return None;
+        }
+
+        let start = usize::try_from(entry >> 16).unwrap();
+        Some(&self.values[start..start + len])
+    }
+}
+
+#[derive(Default)]
+struct RowPool {
+    rows_by_weights: FxHashMap<Box<[u32]>, u32>,
+    rows: Vec<WeightRow>,
+    weights: Vec<u32>,
+}
+
+impl RowPool {
+    fn insert(&mut self, weights: &[u32]) -> u32 {
+        if let Some(row) = self.rows_by_weights.get(weights) {
+            return *row;
+        }
+
+        let row = u32::try_from(self.rows.len()).unwrap();
+        let start = u32::try_from(self.weights.len()).unwrap();
+        let len = u16::try_from(weights.len()).unwrap();
+        self.weights.extend_from_slice(weights);
+        self.rows.push(WeightRow { start, len });
+        self.rows_by_weights.insert(weights.into(), row);
+        row
+    }
+
+    fn get(&self, row: u32) -> &WeightRow {
+        &self.rows[usize::try_from(row).unwrap()]
+    }
+}
+
+struct EdgeNode {
+    weight_row: u32,
+    children: FxHashMap<u32, Self>,
+}
+
+impl Default for EdgeNode {
+    fn default() -> Self {
+        Self {
+            weight_row: NO_ROW,
+            children: FxHashMap::default(),
+        }
+    }
+}
+
+pub fn map_trie(keys: Tailoring) {
+    let cldr = keys != Tailoring::Ducet;
+    let singles = collect_singles(keys);
+    let multis = collect_multis(keys);
+    let table = build_trie_table(&singles, &multis);
+
+    let path_out = if cldr {
+        "bincode/cldr-46_1/cldr_root"
+    } else {
+        "bincode/cldr-46_1/ducet"
+    };
+
+    let bytes = postcard::to_allocvec(&table).unwrap();
+    std::fs::write(path_out, bytes).unwrap();
+}
+
+#[must_use]
+pub fn build_trie_table<S1: BuildHasher, S2: BuildHasher>(
+    singles: &HashMap<u32, Box<[u32]>, S1>,
+    multis: &HashMap<u64, Box<[u32]>, S2>,
+) -> CollationTrieTable {
+    let mut row_pool = RowPool::default();
+    let mut contraction_roots: FxHashMap<u32, EdgeNode> = FxHashMap::default();
+    let mut max_lens: FxHashMap<u32, u8> = FxHashMap::default();
+
+    for (&packed, weights) in multis {
+        let cps = unpack_code_points(packed);
+        let row = row_pool.insert(weights);
+        let root = contraction_roots.entry(cps[0]).or_default();
+        insert_contraction(root, &cps[1..], row);
+        let len = u8::try_from(cps.len()).unwrap();
+        max_lens
+            .entry(cps[0])
+            .and_modify(|max_len| *max_len = (*max_len).max(len))
+            .or_insert(len);
+    }
+
+    let mut entries = vec![ENTRY_MISSING; CODE_POINT_COUNT];
+    let mut contraction_meta = Vec::new();
+    let mut edges = Vec::new();
+    let mut code_points: FxHashSet<u32> = singles.keys().copied().collect();
+    code_points.extend(contraction_roots.keys().copied());
+
+    let mut code_points: Vec<u32> = code_points
+        .into_iter()
+        .filter(|&code_point| !is_low_fast_path_code_point(code_point))
+        .collect();
+    code_points.sort_unstable();
+
+    for code_point in code_points {
+        if let Some(root) = contraction_roots.get(&code_point) {
+            let simple_weights = singles.get(&code_point).unwrap_or_else(|| {
+                panic!("missing single mapping for contraction root U+{code_point:04X}")
+            });
+            let simple_row = row_pool.insert(simple_weights);
+            let simple_row = row_pool.get(simple_row);
+            let first_edge = u32::try_from(edges.len()).unwrap();
+            let edge_len = write_edges(root, &row_pool, &mut edges);
+            let meta_index = u16::try_from(contraction_meta.len()).unwrap();
+            contraction_meta.push(ContractionMeta {
+                first_edge,
+                edge_len,
+                max_len: max_lens[&code_point],
+            });
+            entries[usize::try_from(code_point).unwrap()] = pack_entry(
+                ENTRY_CONTRACTION,
+                simple_row.start,
+                simple_row.len,
+                meta_index,
+            );
+        } else if let Some(weights) = singles.get(&code_point) {
+            let row = row_pool.insert(weights);
+            let row = row_pool.get(row);
+            entries[usize::try_from(code_point).unwrap()] =
+                pack_entry(ENTRY_SIMPLE, row.start, row.len, 0);
+        }
+    }
+
+    let (page_index, entries) = dedupe_entry_pages(&entries);
+
+    CollationTrieTable {
+        page_index,
+        entries,
+        contraction_meta: contraction_meta.into_boxed_slice(),
+        edges: edges.into_boxed_slice(),
+        weights: row_pool.weights.into_boxed_slice(),
+    }
+}
+
+const fn pack_entry(tag: u64, start: u32, len: u16, meta_index: u16) -> u64 {
+    tag | ((len as u64) << ENTRY_LEN_SHIFT)
+        | ((start as u64) << ENTRY_START_SHIFT)
+        | ((meta_index as u64) << ENTRY_META_SHIFT)
+}
+
+#[must_use]
+pub const fn entry_tag(entry: u64) -> u64 {
+    entry & ENTRY_TAG_MASK
+}
+
+#[must_use]
+pub const fn entry_len(entry: u64) -> u16 {
+    ((entry >> ENTRY_LEN_SHIFT) & ENTRY_LEN_MASK) as u16
+}
+
+#[must_use]
+pub const fn entry_start(entry: u64) -> u32 {
+    ((entry >> ENTRY_START_SHIFT) & ENTRY_START_MASK) as u32
+}
+
+#[must_use]
+pub const fn entry_meta_index(entry: u64) -> u16 {
+    (entry >> ENTRY_META_SHIFT) as u16
+}
+
+fn dedupe_entry_pages(entries: &[u64]) -> (Box<[u16]>, Box<[u64]>) {
+    let mut page_index = Vec::with_capacity(CODE_POINT_COUNT / PAGE_SIZE);
+    let mut page_ids: FxHashMap<Box<[u64]>, u16> = FxHashMap::default();
+    let mut deduped_entries = Vec::new();
+
+    for page in entries.chunks_exact(PAGE_SIZE) {
+        if let Some(page_id) = page_ids.get(page) {
+            page_index.push(*page_id);
+            continue;
+        }
+
+        let page_id = u16::try_from(page_ids.len()).unwrap();
+        page_index.push(page_id);
+        deduped_entries.extend_from_slice(page);
+        page_ids.insert(page.into(), page_id);
+    }
+
+    (
+        page_index.into_boxed_slice(),
+        deduped_entries.into_boxed_slice(),
+    )
+}
+
+fn insert_contraction(node: &mut EdgeNode, suffix: &[u32], row: u32) {
+    let child = node.children.entry(suffix[0]).or_default();
+    if suffix.len() == 1 {
+        child.weight_row = row;
+    } else {
+        insert_contraction(child, &suffix[1..], row);
+    }
+}
+
+fn write_edges(node: &EdgeNode, row_pool: &RowPool, edges: &mut Vec<ContractionEdge>) -> u16 {
+    let mut children: Vec<(&u32, &EdgeNode)> = node.children.iter().collect();
+    children.sort_unstable_by_key(|(code_point, _)| **code_point);
+    let edge_len = u16::try_from(children.len()).unwrap();
+
+    let start = edges.len();
+    for (code_point, child) in &children {
+        let (weight_start, weight_len) = if child.weight_row == NO_ROW {
+            (0, 0)
+        } else {
+            let row = row_pool.get(child.weight_row);
+            (row.start, row.len)
+        };
+
+        edges.push(ContractionEdge {
+            code_point: **code_point,
+            next_first_edge: 0,
+            weight_start,
+            next_edge_len: 0,
+            weight_len,
+        });
+    }
+
+    for (i, (_, child)) in children.into_iter().enumerate() {
+        if child.children.is_empty() {
+            continue;
+        }
+        let child_start = u32::try_from(edges.len()).unwrap();
+        let child_len = write_edges(child, row_pool, edges);
+        let edge = &mut edges[start + i];
+        edge.next_first_edge = child_start;
+        edge.next_edge_len = child_len;
+    }
+
+    edge_len
+}
+
+const fn is_low_fast_path_code_point(code_point: u32) -> bool {
+    code_point <= 0xB6 && code_point != 0x4C && code_point != 0x6C
+}
+
+fn unpack_code_points(packed: u64) -> Vec<u32> {
+    if packed >> 42 == 0 {
+        vec![
+            u32::try_from(packed >> 21).unwrap(),
+            u32::try_from(packed & 0x1F_FFFF).unwrap(),
+        ]
+    } else {
+        vec![
+            u32::try_from(packed >> 42).unwrap(),
+            u32::try_from((packed >> 21) & 0x1F_FFFF).unwrap(),
+            u32::try_from(packed & 0x1F_FFFF).unwrap(),
+        ]
+    }
+}
+
+pub fn collect_multis(keys: Tailoring) -> FxHashMap<u64, Box<[u32]>> {
+    let cldr = keys != Tailoring::Ducet;
+    let data = if cldr { &KEYS_CLDR } else { &KEYS_DUCET };
+    let mut map: FxHashMap<u64, Box<[u32]>> = FxHashMap::default();
+
+    for line in data.lines() {
+        if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
+            continue;
+        }
+
+        let mut split_at_semicolon = line.split(';');
+        let left_of_semicolon = split_at_semicolon.next().unwrap();
+        let right_of_semicolon = split_at_semicolon.next().unwrap();
+        let left_of_hash = right_of_semicolon.split('#').next().unwrap();
+
+        let mut k = Vec::new();
+        let re_key = regex!(r"[\dA-F]{4,5}");
+        for m in re_key.find_iter(left_of_semicolon) {
+            k.push(u32::from_str_radix(m.as_str(), 16).unwrap());
+        }
+
+        if k.len() < 2 {
+            continue;
+        }
+
+        map.insert(
+            pack_code_points(&k),
+            parse_weights(left_of_hash, cldr, false),
+        );
+    }
+
+    map
+}
+
+pub fn collect_singles(keys: Tailoring) -> FxHashMap<u32, Box<[u32]>> {
+    let cldr = keys != Tailoring::Ducet;
+    let data = if cldr { &KEYS_CLDR } else { &KEYS_DUCET };
+    let mut map: FxHashMap<u32, Box<[u32]>> = FxHashMap::default();
+
+    for line in data.lines() {
+        if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
+            continue;
+        }
+
+        let mut split_at_semicolon = line.split(';');
+        let left_of_semicolon = split_at_semicolon.next().unwrap();
+        let right_of_semicolon = split_at_semicolon.next().unwrap();
+        let left_of_hash = right_of_semicolon.split('#').next().unwrap();
+
+        let mut points = Vec::new();
+        let re_key = regex!(r"[\dA-F]{4,5}");
+        for m in re_key.find_iter(left_of_semicolon) {
+            points.push(u32::from_str_radix(m.as_str(), 16).unwrap());
+        }
+
+        if points.len() > 1 {
+            continue;
+        }
+
+        map.insert(points[0], parse_weights(left_of_hash, cldr, true));
+    }
+
+    map
+}
+
+fn parse_weights(left_of_hash: &str, cldr: bool, bump: bool) -> Box<[u32]> {
+    let mut v = Vec::new();
+    let re_weights = regex!(r"[*.\dA-F]{15}");
+    let re_value = regex!(r"[\dA-F]{4}");
+
+    for m in re_weights.find_iter(left_of_hash) {
+        let weights_str = m.as_str();
+        let variable = weights_str.starts_with('*');
+        let mut vals = re_value.find_iter(weights_str);
+
+        let mut primary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+        if cldr && bump && (BUMP_START..=BUMP_END).contains(&primary) {
+            primary += BUMP;
+        }
+        if cldr && (SHIFT_START..=SHIFT_END).contains(&primary) {
+            primary += SHIFT;
+        }
+
+        let secondary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+        assert!(secondary <= SEC_MAX);
+
+        let tertiary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
+        assert!(tertiary <= TER_MAX);
+
+        v.push(pack_weights(variable, primary, secondary, tertiary));
+    }
+
+    v.into_boxed_slice()
+}
+
 pub fn map_variable() {
     let mut set: FxHashSet<u32> = FxHashSet::default();
 
@@ -532,12 +1060,52 @@ pub fn map_variable() {
         }
     }
 
+    let mut sorted: Vec<u32> = set.iter().copied().collect();
+    sorted.sort_unstable();
+
     // Write to JSON for debugging
-    let json_bytes = serde_json::to_vec(&set).unwrap();
+    let json_bytes = serde_json::to_vec(&sorted).unwrap();
     std::fs::write("json/cldr-46_1/variable.json", json_bytes).unwrap();
 
-    let bytes = postcard::to_allocvec(&set).unwrap();
+    let table = build_variable_table(&set);
+    let bytes = postcard::to_allocvec(&table).unwrap();
     std::fs::write("bincode/cldr-46_1/variable", bytes).unwrap();
+}
+
+#[must_use]
+pub fn build_variable_table<S: BuildHasher>(set: &HashSet<u32, S>) -> VariableTable {
+    let mut raw_pages = vec![[0u64; PAGE_WORDS]; CODE_POINT_COUNT / PAGE_SIZE];
+    for &code_point in set {
+        let page = usize::try_from(code_point >> 8).unwrap();
+        let offset = usize::try_from(code_point & 0xFF).unwrap();
+        raw_pages[page][offset >> 6] |= 1u64 << (offset & 0x3F);
+    }
+
+    let mut page_index = Vec::with_capacity(raw_pages.len());
+    let mut page_ids: FxHashMap<[u64; PAGE_WORDS], u16> = FxHashMap::default();
+    let mut pages = Vec::new();
+
+    for page in raw_pages {
+        if page == [0; PAGE_WORDS] {
+            page_index.push(VARIABLE_EMPTY_PAGE);
+            continue;
+        }
+
+        if let Some(page_id) = page_ids.get(&page) {
+            page_index.push(*page_id);
+            continue;
+        }
+
+        let page_id = u16::try_from(page_ids.len()).unwrap();
+        page_index.push(page_id);
+        pages.extend_from_slice(&page);
+        page_ids.insert(page, page_id);
+    }
+
+    VariableTable {
+        page_index: page_index.into_boxed_slice(),
+        pages: pages.into_boxed_slice(),
+    }
 }
 
 #[must_use]
