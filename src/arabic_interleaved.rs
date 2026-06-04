@@ -1,16 +1,8 @@
-#![allow(clippy::regex_creation_in_loops)]
-
-use regex::Regex;
+use crate::arabic_tailoring::collect_entries;
+use feruca_mapper::{BUMP, SHIFT, pack_code_points, write_trie};
 use rustc_hash::FxHashMap;
-
 use std::collections::HashMap;
-use std::sync::{LazyLock, OnceLock};
-
-use feruca::Tailoring;
-use feruca_mapper::{
-    BUMP, KEYS_CLDR, SHIFT, build_trie_table, collect_multis, collect_singles, pack_code_points,
-    pack_weights, regex, unpack_weights,
-};
+use std::sync::LazyLock;
 
 static MAPPING: LazyLock<HashMap<u16, u16>> = LazyLock::new(|| {
     HashMap::from([
@@ -53,202 +45,39 @@ static MAPPING: LazyLock<HashMap<u16, u16>> = LazyLock::new(|| {
     ])
 });
 
-fn _map_arabic_interleaved_multi() {
-    let map = collect_arabic_interleaved_multis();
-    let bytes = postcard::to_allocvec(&map).unwrap();
-    std::fs::write(
-        "bincode/cldr-46_1/tailoring/arabic_interleaved_multi",
-        bytes,
-    )
-    .unwrap();
-}
-
-fn _map_arabic_interleaved_sing() {
-    let map = collect_arabic_interleaved_singles();
-    let bytes = postcard::to_allocvec(&map).unwrap();
-    std::fs::write("bincode/cldr-46_1/tailoring/arabic_interleaved_sing", bytes).unwrap();
-}
-
-pub fn map_arabic_interleaved_trie() {
-    let mut singles = collect_singles(Tailoring::default());
+pub fn map_arabic_interleaved_trie(
+    cldr_singles: &FxHashMap<u32, Box<[u32]>>,
+    cldr_multis: &FxHashMap<u64, Box<[u32]>>,
+) {
+    let mut singles = cldr_singles.clone();
     singles.extend(collect_arabic_interleaved_singles());
 
-    let mut multis = collect_multis(Tailoring::default());
+    let mut multis = cldr_multis.clone();
     multis.extend(collect_arabic_interleaved_multis());
 
-    let table = build_trie_table(&singles, &multis);
-    let bytes = postcard::to_allocvec(&table).unwrap();
-    std::fs::write("bincode/cldr-46_1/tailoring/arabic_interleaved", bytes).unwrap();
+    write_trie(
+        "bincode/cldr-46_1/tailoring/arabic_interleaved",
+        &singles,
+        &multis,
+    );
 }
 
 fn collect_arabic_interleaved_multis() -> FxHashMap<u64, Box<[u32]>> {
-    // This is based on the CLDR table, of course
-    let data = KEYS_CLDR.as_str();
-
-    let mut map: FxHashMap<u64, Box<[u32]>> = FxHashMap::default();
-
-    for line in data.lines() {
-        if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
-            continue;
-        }
-
-        let mut split_at_semicolon = line.split(';');
-        let left_of_semicolon = split_at_semicolon.next().unwrap();
-        let right_of_semicolon = split_at_semicolon.next().unwrap();
-        let left_of_hash = right_of_semicolon.split('#').next().unwrap();
-
-        let mut k = Vec::new();
-        let re_key = regex!(r"[\dA-F]{4,5}");
-        for m in re_key.find_iter(left_of_semicolon) {
-            let as_u32 = u32::from_str_radix(m.as_str(), 16).unwrap();
-            k.push(as_u32);
-        }
-
-        // Here we're only looking for multi-code-point lines
-        if k.len() < 2 {
-            continue;
-        }
-
-        let mut v: Vec<u32> = Vec::new();
-        let re_weights = regex!(r"[*.\dA-F]{15}");
-        let re_value = regex!(r"[\dA-F]{4}");
-
-        for m in re_weights.find_iter(left_of_hash) {
-            let weights_str = m.as_str();
-
-            let variable = weights_str.starts_with('*');
-
-            let mut vals = re_value.find_iter(weights_str);
-
-            let primary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
-            let secondary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
-            let tertiary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
-
-            let weights = pack_weights(variable, primary, secondary, tertiary);
-
-            v.push(weights);
-        }
-
-        // Up to this point, we haven't been so selective. We've taken any multi-code-point
-        // sequence and the corresponding Vec of Weights. But we need to check to make sure there
-        // is at least one relevant primary weight. Otherwise we continue.
-
-        let mut arabic = false;
-
-        for weights in &v {
-            let (_, primary, _, _) = unpack_weights(*weights);
-
-            if MAPPING.contains_key(&primary) {
-                arabic = true;
-                break;
-            }
-        }
-
-        if !arabic {
-            continue;
-        }
-
-        // Then we look again for any Arabic letter primary weight, and shift it down to fit in
-        // its proper space among the Latin letters.
-
-        for weights in &mut v {
-            let (variable, primary, secondary, tertiary) = unpack_weights(*weights);
-
-            if let Some(new_primary) = MAPPING.get(&primary) {
-                *weights = pack_weights(variable, *new_primary, secondary, tertiary);
-            }
-        }
-
-        map.insert(pack_code_points(&k), v.into_boxed_slice());
-    }
-
-    map
+    collect_entries(
+        |points| points.len() >= 2,
+        pack_code_points,
+        map_arabic_interleaved_primary,
+    )
 }
 
 fn collect_arabic_interleaved_singles() -> FxHashMap<u32, Box<[u32]>> {
-    // This is based on the CLDR table, of course
-    let data = KEYS_CLDR.as_str();
+    collect_entries(
+        |points| points.len() == 1,
+        |points| points[0],
+        map_arabic_interleaved_primary,
+    )
+}
 
-    let mut map: FxHashMap<u32, Vec<u32>> = FxHashMap::default();
-
-    for line in data.lines() {
-        if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
-            continue;
-        }
-
-        let mut split_at_semicolon = line.split(';');
-        let left_of_semicolon = split_at_semicolon.next().unwrap();
-        let right_of_semicolon = split_at_semicolon.next().unwrap();
-        let left_of_hash = right_of_semicolon.split('#').next().unwrap();
-
-        let mut points = Vec::new();
-        let re_key = regex!(r"[\dA-F]{4,5}");
-        for m in re_key.find_iter(left_of_semicolon) {
-            let as_u32 = u32::from_str_radix(m.as_str(), 16).unwrap();
-            points.push(as_u32);
-        }
-
-        // Here we're only looking for single-code-point lines
-        if points.len() > 1 {
-            continue;
-        }
-
-        let k = points[0];
-
-        let mut v: Vec<u32> = Vec::new();
-        let re_weights = regex!(r"[*.\dA-F]{15}");
-        let re_value = regex!(r"[\dA-F]{4}");
-
-        for m in re_weights.find_iter(left_of_hash) {
-            let weights_str = m.as_str();
-
-            let variable = weights_str.starts_with('*');
-
-            let mut vals = re_value.find_iter(weights_str);
-
-            let primary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
-            let secondary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
-            let tertiary = u16::from_str_radix(vals.next().unwrap().as_str(), 16).unwrap();
-
-            let weights = pack_weights(variable, primary, secondary, tertiary);
-
-            v.push(weights);
-        }
-
-        // Up to this point, we haven't been so selective. We've taken any single code point and
-        // the corresponding Vec of Weights. But we need to check to make sure there is at least
-        // one relevant primary weight. Otherwise we continue.
-
-        let mut arabic = false;
-
-        for weights in &v {
-            let (_, primary, _, _) = unpack_weights(*weights);
-
-            if MAPPING.contains_key(&primary) {
-                arabic = true;
-                break;
-            }
-        }
-
-        if !arabic {
-            continue;
-        }
-
-        // Then we look again for any Arabic letter primary weight, and shift it down to fit in
-        // its proper space among the Latin letters.
-
-        for weights in &mut v {
-            let (variable, primary, secondary, tertiary) = unpack_weights(*weights);
-
-            if let Some(new_primary) = MAPPING.get(&primary) {
-                *weights = pack_weights(variable, *new_primary, secondary, tertiary);
-            }
-        }
-
-        map.insert(k, v);
-    }
-
-    map.into_iter()
-        .map(|(k, v)| (k, v.into_boxed_slice()))
-        .collect()
+fn map_arabic_interleaved_primary(primary: u16) -> Option<u16> {
+    MAPPING.get(&primary).copied()
 }

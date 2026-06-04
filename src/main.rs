@@ -1,7 +1,10 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 
 use feruca::Tailoring;
-use feruca_mapper::{map_decomps, map_fcd, map_low, map_trie, map_variable};
+use feruca_mapper::{
+    collect_multis, collect_singles, map_cldr_trie, map_decomps, map_fcd, map_low, map_trie,
+    map_variable,
+};
 
 mod arabic_script;
 use arabic_script::map_arabic_script_trie;
@@ -9,55 +12,37 @@ use arabic_script::map_arabic_script_trie;
 mod arabic_interleaved;
 use arabic_interleaved::map_arabic_interleaved_trie;
 
+mod arabic_tailoring;
+
 fn main() {
-    let mut now = std::time::Instant::now();
-    map_decomps();
-    let mut elapsed = now.elapsed();
-    println!("Decompositions took: {} ms", elapsed.as_millis());
+    timed("Decompositions", map_decomps);
+    timed("FCD", map_fcd);
+    timed("Variable table", map_variable);
+    timed("Low mappings (DUCET)", || map_low(Tailoring::Ducet));
+    timed("Low mappings (CLDR)", || map_low(Tailoring::default()));
+    timed("Trie mappings (DUCET)", || map_trie(Tailoring::Ducet));
 
-    now = std::time::Instant::now();
-    map_fcd();
-    elapsed = now.elapsed();
-    println!("FCD took: {} ms", elapsed.as_millis());
+    let cldr_singles = timed("Collect mappings (CLDR singles)", || {
+        collect_singles(Tailoring::default())
+    });
+    let cldr_multis = timed("Collect mappings (CLDR multis)", || {
+        collect_multis(Tailoring::default())
+    });
 
-    now = std::time::Instant::now();
-    map_variable();
-    elapsed = now.elapsed();
-    println!("Variable table took: {} ms", elapsed.as_millis());
+    timed("Trie mappings (CLDR)", || {
+        map_cldr_trie(&cldr_singles, &cldr_multis);
+    });
+    timed("Trie mappings (ArabicScript)", || {
+        map_arabic_script_trie(&cldr_singles, &cldr_multis);
+    });
+    timed("Trie mappings (ArabicInterleaved)", || {
+        map_arabic_interleaved_trie(&cldr_singles, &cldr_multis);
+    });
+}
 
-    now = std::time::Instant::now();
-    map_low(Tailoring::Ducet);
-    elapsed = now.elapsed();
-    println!("Low mappings (DUCET) took: {} ms", elapsed.as_millis());
-
-    now = std::time::Instant::now();
-    map_low(Tailoring::default());
-    elapsed = now.elapsed();
-    println!("Low mappings (CLDR) took: {} ms", elapsed.as_millis());
-
-    now = std::time::Instant::now();
-    map_trie(Tailoring::Ducet);
-    elapsed = now.elapsed();
-    println!("Trie mappings (DUCET) took: {} ms", elapsed.as_millis());
-
-    now = std::time::Instant::now();
-    map_trie(Tailoring::default());
-    elapsed = now.elapsed();
-    println!("Trie mappings (CLDR) took: {} ms", elapsed.as_millis());
-
-    now = std::time::Instant::now();
-    map_arabic_script_trie();
-    elapsed = now.elapsed();
-    println!(
-        "Trie mappings (ArabicScript) took: {} ms",
-        elapsed.as_millis()
-    );
-
-    now = std::time::Instant::now();
-    map_arabic_interleaved_trie();
-    elapsed = now.elapsed();
-    println!(
-        "Trie mappings (ArabicInterleaved) took: {} ms",
-        elapsed.as_millis()
-    );
+fn timed<T>(label: &str, f: impl FnOnce() -> T) -> T {
+    let now = std::time::Instant::now();
+    let output = f();
+    println!("{label} took: {} ms", now.elapsed().as_millis());
+    output
 }
