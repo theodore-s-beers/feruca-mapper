@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 feruca = { git = "https://github.com/theodore-s-beers/feruca" }
 postcard = { version = "1.1.3", features = ["alloc"] }
-regex = "1.12.3"
+regex = "1.12.4"
 rustc-hash = "2.1.2"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
