@@ -229,10 +229,13 @@ pub const fn entry_meta_index(entry: u64) -> u16 {
 
 fn dedupe_entry_pages(entries: &[u64]) -> (Box<[u16]>, Box<[u64]>) {
     let mut page_index = Vec::with_capacity(CODE_POINT_COUNT / PAGE_SIZE);
-    let mut page_ids: FxHashMap<Box<[u64]>, u16> = FxHashMap::default();
+    let mut page_ids: FxHashMap<Box<[u64; PAGE_SIZE]>, u16> = FxHashMap::default();
     let mut deduped_entries = Vec::new();
 
-    for page in entries.chunks_exact(PAGE_SIZE) {
+    let (pages, remainder) = entries.as_chunks::<PAGE_SIZE>();
+    debug_assert!(remainder.is_empty());
+
+    for page in pages {
         if let Some(page_id) = page_ids.get(page) {
             page_index.push(*page_id);
             continue;
@@ -241,7 +244,7 @@ fn dedupe_entry_pages(entries: &[u64]) -> (Box<[u16]>, Box<[u64]>) {
         let page_id = u16::try_from(page_ids.len()).unwrap();
         page_index.push(page_id);
         deduped_entries.extend_from_slice(page);
-        page_ids.insert(page.into(), page_id);
+        page_ids.insert(Box::new(*page), page_id);
     }
 
     (
