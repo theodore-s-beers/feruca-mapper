@@ -2,36 +2,14 @@
 
 use crate::common::{CODE_POINT_COUNT, PAGE_SIZE, VARIABLE_EMPTY_PAGE};
 use crate::regex;
+use crate::unicode::{UNI_DATA, get_ccc};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, hash::BuildHasher, ops::RangeInclusive, sync::LazyLock};
-use unicode_canonical_combining_class::get_canonical_combining_class_u32 as get_ccc;
-
-static UNI_DATA: LazyLock<String> =
-    LazyLock::new(|| std::fs::read_to_string("unicode-data/cldr-46_1/UnicodeData.txt").unwrap());
-
-// Ignored code point ranges for decompositions and FCD
-const IGNORED_RANGES: [RangeInclusive<u32>; 15] = [
-    0x3400..=0x4DBF,
-    0x4E00..=0x9FFF,
-    0xAC00..=0xD7A3,
-    0xD800..=0xDFFF,
-    0xE000..=0xF8FF,
-    0x17000..=0x187F7,
-    0x18D00..=0x18D08,
-    0x20000..=0x2A6DF,
-    0x2A700..=0x2B738,
-    0x2B740..=0x2B81D,
-    0x2B820..=0x2CEA1,
-    0x2CEB0..=0x2EBE0,
-    0x30000..=0x3134A,
-    0xF0000..=0xFFFFD,
-    0x10_0000..=0x10_FFFD,
-];
+use std::{collections::HashMap, hash::BuildHasher, sync::LazyLock};
 
 // The output of map_decomps is needed for map_fcd
 static DECOMP: LazyLock<DecompTable> = LazyLock::new(|| {
-    let data = std::fs::read("bincode/cldr-46_1/decomp").unwrap();
+    let data = std::fs::read("bincode/18/decomp").unwrap();
     postcard::from_bytes(&data).unwrap()
 });
 
@@ -81,10 +59,8 @@ pub fn map_decomps() {
         let fields: Vec<&str> = line.split(';').collect();
 
         let code_point = u32::from_str_radix(fields[0], 16).unwrap();
-        if IGNORED_RANGES.iter().any(|r| r.contains(&code_point)) {
-            continue;
-        }
 
+        // UnicodeData leaves algorithmic Hangul decomps and range records empty
         let decomp_col = fields[5];
         if decomp_col.is_empty() {
             continue; // No decomposition; continue
@@ -102,7 +78,7 @@ pub fn map_decomps() {
             decomp.push(code_point);
         }
 
-        assert!(!decomp.is_empty());
+        assert_ne!(decomp, [] as [u32; 0]);
 
         listed.insert(code_point, decomp);
     }
@@ -131,12 +107,12 @@ pub fn map_decomps() {
 
     // Write to JSON for debugging
     let json_bytes = serde_json::to_vec(&sorted).unwrap();
-    std::fs::write("json/cldr-46_1/decomp.json", json_bytes).unwrap();
+    std::fs::write("json/18/decomp.json", json_bytes).unwrap();
 
-    // Write to bincode; this is what we actually use
+    // Serialize the table for Feruca using postcard
     let table = build_decomp_table(&canonical);
     let bytes = postcard::to_allocvec(&table).unwrap();
-    std::fs::write("bincode/cldr-46_1/decomp", bytes).unwrap();
+    std::fs::write("bincode/18/decomp", bytes).unwrap();
 }
 
 #[must_use]
@@ -189,7 +165,7 @@ pub fn build_decomp_table<S: BuildHasher>(map: &HashMap<u32, Box<[u32]>, S>) -> 
 
 fn get_canonical_decomp(listed: &FxHashMap<u32, Vec<u32>>, code_point: u32) -> Box<[u32]> {
     listed.get(&code_point).map_or_else(
-        || vec![code_point].into_boxed_slice(), // No further decomp; return code point itself
+        || vec![code_point].into_boxed_slice(), // No further decomp; return code point
         |decomp| {
             if decomp.len() == 1 {
                 // Single-code-point decomp; return it directly
@@ -215,18 +191,14 @@ pub fn map_fcd() {
         }
 
         let left_of_semicolon = line.split(';').next().unwrap();
-
         let code_point = u32::from_str_radix(left_of_semicolon, 16).unwrap();
-        if IGNORED_RANGES.iter().any(|r| r.contains(&code_point)) {
-            continue;
-        }
 
         let Some(canon_decomp) = DECOMP.get(code_point) else {
             continue;
         };
 
-        let first_cc = get_ccc(canon_decomp[0]) as u8;
-        let last_cc = get_ccc(canon_decomp[canon_decomp.len() - 1]) as u8;
+        let first_cc = get_ccc(canon_decomp[0]);
+        let last_cc = get_ccc(canon_decomp[canon_decomp.len() - 1]);
 
         let packed = (u16::from(first_cc) << 8) | u16::from(last_cc);
         if packed == 0 {
@@ -244,12 +216,12 @@ pub fn map_fcd() {
 
     // Write to JSON for debugging
     let json_bytes = serde_json::to_vec(&sorted).unwrap();
-    std::fs::write("json/cldr-46_1/fcd.json", json_bytes).unwrap();
+    std::fs::write("json/18/fcd.json", json_bytes).unwrap();
 
-    // Write to bincode; this is what we actually use
+    // Serialize table for feruca using postcard
     let table = build_fcd_table(&map);
     let bytes = postcard::to_allocvec(&table).unwrap();
-    std::fs::write("bincode/cldr-46_1/fcd", bytes).unwrap();
+    std::fs::write("bincode/18/fcd", bytes).unwrap();
 }
 
 #[must_use]

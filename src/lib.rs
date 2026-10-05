@@ -1,4 +1,7 @@
 #![warn(clippy::pedantic, clippy::nursery)]
+#![allow(clippy::missing_panics_doc)]
+
+mod output;
 
 mod collation;
 pub use collation::{
@@ -31,3 +34,6 @@ macro_rules! regex {
         RE.get_or_init(|| ::regex::Regex::new($re).unwrap())
     }};
 }
+
+mod unicode;
+pub use unicode::map_unicode;

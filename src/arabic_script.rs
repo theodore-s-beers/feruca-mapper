@@ -2,8 +2,8 @@ use crate::arabic_tailoring::collect_entries;
 use feruca_mapper::{pack_code_points, write_trie};
 use rustc_hash::FxHashMap;
 
-const FIRST_ARABIC_PRIMARY: u16 = 0x2A68; // 0621, "ARABIC LETTER HAMZA"
-const LAST_ARABIC_PRIMARY: u16 = 0x2B56; // 088E, "ARABIC VERTICAL TAIL"
+const FIRST_ARABIC_PRIMARY: u16 = 0x2BAD; // 0621, "ARABIC LETTER HAMZA"
+const LAST_ARABIC_PRIMARY: u16 = 0x2C9D; // 088E, "ARABIC VERTICAL TAIL"
 const OFFSET: u16 = 0x600; // This is tested below
 
 pub fn map_arabic_script_trie(
@@ -17,7 +17,7 @@ pub fn map_arabic_script_trie(
     multis.extend(collect_arabic_script_multis());
 
     write_trie(
-        "bincode/cldr-46_1/tailoring/arabic_script",
+        "bincode/cldr-49-beta2/tailoring/arabic_script",
         &singles,
         &multis,
     );
@@ -52,8 +52,8 @@ mod tests {
     use super::*;
     use feruca_mapper::SHIFT;
 
-    const LAST_PRIMARY_BEFORE_LATIN: u16 = 0x237F;
-    const FIRST_LATIN_PRIMARY: u16 = 0x2380 + SHIFT; // 0061, "LATIN SMALL LETTER A"
+    const LAST_PRIMARY_BEFORE_LATIN: u16 = 0x2484;
+    const FIRST_LATIN_PRIMARY: u16 = 0x2485 + SHIFT; // 0061, "LATIN SMALL LETTER A"
 
     #[test]
     fn verify_offset() {

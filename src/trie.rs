@@ -103,9 +103,9 @@ pub fn map_trie(keys: Tailoring) {
     let multis = collect_multis(keys);
 
     let path_out = if cldr {
-        "bincode/cldr-46_1/cldr_root"
+        "bincode/cldr-49-beta2/cldr_root"
     } else {
-        "bincode/cldr-46_1/ducet"
+        "bincode/18/ducet"
     };
 
     write_trie(path_out, &singles, &multis);
@@ -115,7 +115,7 @@ pub fn map_cldr_trie<S1: BuildHasher, S2: BuildHasher>(
     singles: &HashMap<u32, Box<[u32]>, S1>,
     multis: &HashMap<u64, Box<[u32]>, S2>,
 ) {
-    write_trie("bincode/cldr-46_1/cldr_root", singles, multis);
+    write_trie("bincode/cldr-49-beta2/cldr_root", singles, multis);
 }
 
 pub fn write_trie<S1: BuildHasher, S2: BuildHasher>(
@@ -233,7 +233,7 @@ fn dedupe_entry_pages(entries: &[u64]) -> (Box<[u16]>, Box<[u64]>) {
     let mut deduped_entries = Vec::new();
 
     let (pages, remainder) = entries.as_chunks::<PAGE_SIZE>();
-    debug_assert!(remainder.is_empty());
+    debug_assert_eq!(remainder, [] as [u64; 0]);
 
     for page in pages {
         if let Some(page_id) = page_ids.get(page) {

@@ -6,22 +6,23 @@ use rustc_hash::FxHashMap;
 use std::{hash::Hash, sync::LazyLock};
 
 pub static KEYS_DUCET: LazyLock<String> =
-    LazyLock::new(|| std::fs::read_to_string("unicode-data/cldr-46_1/allkeys.txt").unwrap());
+    LazyLock::new(|| std::fs::read_to_string("unicode-data/18/allkeys.txt").unwrap());
 
-pub static KEYS_CLDR: LazyLock<String> =
-    LazyLock::new(|| std::fs::read_to_string("unicode-data/cldr-46_1/allkeys_CLDR.txt").unwrap());
+pub static KEYS_CLDR: LazyLock<String> = LazyLock::new(|| {
+    std::fs::read_to_string("unicode-data/cldr-49-beta2/allkeys_CLDR.txt").unwrap()
+});
 
 // This adjustment affects only the low and singles maps
 pub const BUMP: u16 = 1;
-const BUMP_START: u16 = 0x2384; // Latin small capital A
-const BUMP_END: u16 = 0x2454; // Small gap above this, before Latin H, that we can use
+const BUMP_START: u16 = 0x2489; // Latin small capital A
+const BUMP_END: u16 = 0x256B; // Small gap above this, before Latin H, that we can use
 
 pub const SHIFT: u16 = 0x400;
-const SHIFT_START: u16 = 0x2380; // Latin script begins
-const SHIFT_END: u16 = 0x72B6; // Large gap above this that we can use
+const SHIFT_START: u16 = 0x2485; // Latin script begins
+const SHIFT_END: u16 = 0x749E; // Large gap above this that we can use
 
-const SEC_MAX: u16 = 0x126; // Largest secondary weight that is actually used
-const TER_MAX: u16 = 0x1E; // Largest tertiary weight that is actually used
+const SEC_MAX: u16 = 0x127; // Largest secondary weight that is actually used
+const TER_MAX: u16 = 0x1F; // Largest tertiary weight that is actually used
 
 pub fn map_low(keys: Tailoring) {
     let cldr = keys != Tailoring::Ducet;
@@ -90,15 +91,26 @@ pub fn map_low(keys: Tailoring) {
         assert_eq!(v, *map_val);
     }
 
-    // Write to JSON only in this case; we'll copy-paste the values into feruca source code
+    // Keep diagnostic JSON and generate the Rust array installed in Feruca.
     let path_out = if cldr {
-        "json/cldr-46_1/low_cldr.json"
+        "json/cldr-49-beta2/low_cldr.json"
     } else {
-        "json/cldr-46_1/low.json"
+        "json/18/low.json"
     };
 
     let json_bytes = serde_json::to_vec(arr.as_slice()).unwrap();
     std::fs::write(path_out, json_bytes).unwrap();
+    if cldr {
+        crate::output::write_cldr_rust(
+            "low_cldr.rs",
+            &format!("pub const LOW_CLDR: [u32; 183] = {arr:?};\n"),
+        );
+    } else {
+        crate::output::write_rust(
+            "low_ducet.rs",
+            &format!("pub const LOW_DUCET: [u32; 183] = {arr:?};\n"),
+        );
+    }
 }
 
 #[must_use]

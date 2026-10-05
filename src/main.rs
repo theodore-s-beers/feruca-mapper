@@ -15,6 +15,17 @@ use arabic_interleaved::map_arabic_interleaved_trie;
 mod arabic_tailoring;
 
 fn main() {
+    for path in [
+        "bincode/18",
+        "json/18",
+        "generated/18",
+        "generated/cldr-49-beta2",
+        "bincode/cldr-49-beta2/tailoring",
+        "json/cldr-49-beta2",
+    ] {
+        std::fs::create_dir_all(path).unwrap();
+    }
+    timed("Unicode properties", feruca_mapper::map_unicode);
     timed("Decompositions", map_decomps);
     timed("FCD", map_fcd);
     timed("Variable table", map_variable);

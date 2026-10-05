@@ -1,7 +1,7 @@
 #![allow(clippy::missing_panics_doc, clippy::regex_creation_in_loops)]
 
 use crate::{
-    collation::KEYS_DUCET,
+    collation::{KEYS_CLDR, KEYS_DUCET},
     common::{CODE_POINT_COUNT, PAGE_SIZE, PAGE_WORDS, VARIABLE_EMPTY_PAGE},
     regex,
 };
@@ -18,10 +18,8 @@ pub struct VariableTable {
 pub fn map_variable() {
     let mut set: FxHashSet<u32> = FxHashSet::default();
 
-    // We only need to use DUCET for this, since (as far as I can tell from testing) every code
-    // point in the CLDR table that has a variable weight or a zero primary weight, also has that
-    // in DUCET. But the inverse is not true.
-    'outer: for line in KEYS_DUCET.lines() {
+    // Shared prefix guard must cover both tables, incl. variable-flag differences
+    'outer: for line in KEYS_DUCET.lines().chain(KEYS_CLDR.lines()) {
         if line.is_empty() || line.starts_with('@') || line.starts_with('#') {
             continue;
         }
@@ -70,11 +68,11 @@ pub fn map_variable() {
 
     // Write to JSON for debugging
     let json_bytes = serde_json::to_vec(&sorted).unwrap();
-    std::fs::write("json/cldr-46_1/variable.json", json_bytes).unwrap();
+    std::fs::write("json/18/variable.json", json_bytes).unwrap();
 
     let table = build_variable_table(&set);
     let bytes = postcard::to_allocvec(&table).unwrap();
-    std::fs::write("bincode/cldr-46_1/variable", bytes).unwrap();
+    std::fs::write("bincode/18/variable", bytes).unwrap();
 }
 
 #[must_use]
