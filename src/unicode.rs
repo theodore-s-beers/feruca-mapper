@@ -58,13 +58,49 @@ fn parse_range(text: &str) -> (u32, u32) {
     )
 }
 
-pub fn map_unicode() {
-    let mut ccc_source = String::from("pub const fn get_ccc(cp: u32) -> u8 { match cp {\n");
-    for &(start, end, ccc) in RECORDS.iter().filter(|r| r.2 != 0) {
-        writeln!(ccc_source, "{} => {ccc},", hex_range(start, end)).unwrap();
+fn map_ccc() {
+    const BLOCK_SIZE: usize = 256;
+    let last = CCC.iter().rposition(|&ccc| ccc != 0).unwrap();
+    let mut blocks: Vec<&[u8; BLOCK_SIZE]> = Vec::new();
+    let mut offsets = Vec::new();
+
+    // Keep one copy of each block, including the all-zero block
+    for block in CCC
+        .as_chunks::<BLOCK_SIZE>()
+        .0
+        .iter()
+        .take(last / BLOCK_SIZE + 1)
+    {
+        let index = blocks
+            .iter()
+            .position(|&existing| existing == block)
+            .unwrap_or_else(|| {
+                blocks.push(block);
+                blocks.len() - 1
+            });
+        offsets.push(u16::try_from(index * BLOCK_SIZE).unwrap());
     }
-    ccc_source.push_str("_ => 0, } }\n");
-    write_rust("ccc.rs", &ccc_source);
+    let values: Vec<u8> = blocks.into_iter().flatten().copied().collect();
+
+    let source = format!(
+        "// Deduplicated 256-code-point blocks; values beyond the last nonzero class are zero.\n\
+         pub const fn get_ccc(cp: u32) -> u8 {{\n\
+         if cp <= {last} {{\n\
+         BLOCKS[OFFSETS[(cp >> 8) as usize] as usize + (cp as usize & 255)]\n\
+         }} else {{ 0 }}\n\
+         }}\n\
+         #[allow(clippy::unreadable_literal)]\n\
+         static OFFSETS: [u16; {offset_count}] = {offsets:?};\n\
+         #[allow(clippy::unreadable_literal)]\n\
+         static BLOCKS: [u8; {value_count}] = {values:?};\n",
+        offset_count = offsets.len(),
+        value_count = values.len(),
+    );
+    write_rust("ccc.rs", &source);
+}
+
+pub fn map_unicode() {
+    map_ccc();
 
     let mut rules = Vec::new();
     for line in crate::collation::KEYS_DUCET.lines() {
@@ -139,4 +175,27 @@ pub fn map_unicode() {
     }
     source.push_str("_ => (0xFBC0 + (cp >> 15), cp & 0x7FFF), }; (a, b | 0x8000) }\n");
     write_rust("implicit_weights.rs", &source);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod generated {
+        include!("../generated/18/ccc.rs");
+    }
+
+    #[test]
+    fn generated_combining_classes_match_unicode_data() {
+        for (cp, &expected) in CCC.iter().enumerate() {
+            assert_eq!(
+                generated::get_ccc(u32::try_from(cp).unwrap()),
+                expected,
+                "U+{cp:04X}"
+            );
+        }
+        for cp in [0x11_0000, u32::MAX] {
+            assert_eq!(generated::get_ccc(cp), 0);
+        }
+    }
 }
