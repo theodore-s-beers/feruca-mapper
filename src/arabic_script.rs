@@ -38,7 +38,7 @@ fn collect_arabic_script_singles() -> FxHashMap<u32, Box<[u32]>> {
 fn map_arabic_script_primary(primary: u16) -> Option<u16> {
     (FIRST_ARABIC_PRIMARY..=LAST_ARABIC_PRIMARY)
         .contains(&primary)
-        .then_some(primary - OFFSET)
+        .then(|| primary - OFFSET)
 }
 
 #[cfg(test)]
@@ -50,6 +50,17 @@ mod tests {
 
     const LAST_PRIMARY_BEFORE_LATIN: u16 = 0x2484;
     const FIRST_LATIN_PRIMARY: u16 = 0x2485 + SHIFT; // 0061, "LATIN SMALL LETTER A"
+
+    #[test]
+    fn only_arabic_primaries_are_shifted() {
+        for primary in [0, FIRST_ARABIC_PRIMARY - 1, LAST_ARABIC_PRIMARY + 1] {
+            assert_eq!(map_arabic_script_primary(primary), None);
+        }
+
+        for primary in [FIRST_ARABIC_PRIMARY, LAST_ARABIC_PRIMARY] {
+            assert_eq!(map_arabic_script_primary(primary), Some(primary - OFFSET));
+        }
+    }
 
     #[test]
     fn verify_offset() {
