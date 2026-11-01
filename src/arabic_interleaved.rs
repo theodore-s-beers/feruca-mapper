@@ -85,8 +85,7 @@ fn map_arabic_interleaved_primary(primary: u16) -> Option<u16> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use feruca::Tailoring;
-    use feruca_mapper::{collect_singles, unpack_weights};
+    use feruca_mapper::{CollationSource, collect_singles, unpack_weights};
     use std::collections::HashSet;
 
     #[test]
@@ -94,7 +93,7 @@ mod tests {
         let destinations: HashSet<_> = MAPPING.values().copied().collect();
         assert_eq!(destinations.len(), MAPPING.len());
 
-        let singles = collect_singles(Tailoring::default());
+        let singles = collect_singles(CollationSource::Cldr);
         for row in singles.values() {
             for &packed in row {
                 let primary = unpack_weights(packed).1;

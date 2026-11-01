@@ -5,8 +5,8 @@ mod output;
 
 mod collation;
 pub use collation::{
-    BUMP, KEYS_CLDR, SHIFT, collect_multis, collect_singles, map_low, pack_code_points,
-    pack_weights, unpack_weights,
+    BUMP, CollationSource, KEYS_CLDR, SHIFT, collect_multis, collect_singles, map_low,
+    pack_code_points, pack_weights, unpack_weights,
 };
 
 mod common;

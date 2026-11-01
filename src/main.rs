@@ -1,9 +1,8 @@
 #![warn(clippy::pedantic, clippy::nursery)]
 
-use feruca::Tailoring;
 use feruca_mapper::{
-    collect_multis, collect_singles, map_cldr_trie, map_decomps, map_fcd, map_low, map_trie,
-    map_variable,
+    CollationSource, collect_multis, collect_singles, map_cldr_trie, map_decomps, map_fcd, map_low,
+    map_trie, map_variable,
 };
 
 mod arabic_script;
@@ -29,15 +28,15 @@ fn main() {
     timed("Decompositions", map_decomps);
     timed("FCD", map_fcd);
     timed("Variable table", map_variable);
-    timed("Low mappings (DUCET)", || map_low(Tailoring::Ducet));
-    timed("Low mappings (CLDR)", || map_low(Tailoring::default()));
-    timed("Trie mappings (DUCET)", || map_trie(Tailoring::Ducet));
+    timed("Low mappings (DUCET)", || map_low(CollationSource::Ducet));
+    timed("Low mappings (CLDR)", || map_low(CollationSource::Cldr));
+    timed("Trie mappings (DUCET)", || map_trie(CollationSource::Ducet));
 
     let cldr_singles = timed("Collect mappings (CLDR singles)", || {
-        collect_singles(Tailoring::default())
+        collect_singles(CollationSource::Cldr)
     });
     let cldr_multis = timed("Collect mappings (CLDR multis)", || {
-        collect_multis(Tailoring::default())
+        collect_multis(CollationSource::Cldr)
     });
 
     timed("Trie mappings (CLDR)", || {

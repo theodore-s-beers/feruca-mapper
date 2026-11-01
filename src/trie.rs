@@ -1,10 +1,10 @@
 #![allow(clippy::missing_panics_doc)]
 
 use crate::{
+    CollationSource,
     collation::{collect_multis, collect_singles, unpack_code_points},
     common::{CODE_POINT_COUNT, PAGE_SIZE},
 };
-use feruca::Tailoring;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Serialize;
 use std::{collections::HashMap, hash::BuildHasher};
@@ -97,8 +97,8 @@ impl Default for EdgeNode {
     }
 }
 
-pub fn map_trie(keys: Tailoring) {
-    let cldr = keys != Tailoring::Ducet;
+pub fn map_trie(keys: CollationSource) {
+    let cldr = keys == CollationSource::Cldr;
     let singles = collect_singles(keys);
     let multis = collect_multis(keys);
 

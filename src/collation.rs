@@ -1,9 +1,15 @@
 #![allow(clippy::missing_panics_doc, clippy::regex_creation_in_loops)]
 
 use crate::regex;
-use feruca::Tailoring;
 use rustc_hash::FxHashMap;
 use std::{hash::Hash, sync::LazyLock};
+
+/// The source collation table to use when generating mappings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollationSource {
+    Ducet,
+    Cldr,
+}
 
 pub static KEYS_DUCET: LazyLock<String> =
     LazyLock::new(|| std::fs::read_to_string("unicode-data/18/allkeys.txt").unwrap());
@@ -23,8 +29,8 @@ const SHIFT_END: u16 = 0x749E; // Large gap above this that we can use
 const SEC_MAX: u16 = 0x127; // Largest secondary weight that is actually used
 const TER_MAX: u16 = 0x1F; // Largest tertiary weight that is actually used
 
-pub fn map_low(keys: Tailoring) {
-    let cldr = keys != Tailoring::Ducet;
+pub fn map_low(keys: CollationSource) {
+    let cldr = keys == CollationSource::Cldr;
 
     let data = if cldr { &KEYS_CLDR } else { &KEYS_DUCET };
 
@@ -113,17 +119,17 @@ pub fn map_low(keys: Tailoring) {
 }
 
 #[must_use]
-pub fn collect_multis(keys: Tailoring) -> FxHashMap<u64, Box<[u32]>> {
+pub fn collect_multis(keys: CollationSource) -> FxHashMap<u64, Box<[u32]>> {
     collect_entries(keys, |points| points.len() >= 2, pack_code_points, false)
 }
 
 #[must_use]
-pub fn collect_singles(keys: Tailoring) -> FxHashMap<u32, Box<[u32]>> {
+pub fn collect_singles(keys: CollationSource) -> FxHashMap<u32, Box<[u32]>> {
     collect_entries(keys, |points| points.len() == 1, |points| points[0], true)
 }
 
 fn collect_entries<K>(
-    keys: Tailoring,
+    keys: CollationSource,
     include_points: impl Fn(&[u32]) -> bool,
     pack_key: impl Fn(&[u32]) -> K,
     bump: bool,
@@ -131,7 +137,7 @@ fn collect_entries<K>(
 where
     K: Eq + Hash,
 {
-    let cldr = keys != Tailoring::Ducet;
+    let cldr = keys == CollationSource::Cldr;
     let data = if cldr { &KEYS_CLDR } else { &KEYS_DUCET };
     let mut map: FxHashMap<K, Box<[u32]>> = FxHashMap::default();
 
