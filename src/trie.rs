@@ -103,7 +103,7 @@ pub fn map_trie(keys: Tailoring) {
     let multis = collect_multis(keys);
 
     let path_out = if cldr {
-        "bincode/cldr-49-beta2/cldr_root"
+        "bincode/cldr-49/cldr_root"
     } else {
         "bincode/18/ducet"
     };
@@ -115,7 +115,7 @@ pub fn map_cldr_trie<S1: BuildHasher, S2: BuildHasher>(
     singles: &HashMap<u32, Box<[u32]>, S1>,
     multis: &HashMap<u64, Box<[u32]>, S2>,
 ) {
-    write_trie("bincode/cldr-49-beta2/cldr_root", singles, multis);
+    write_trie("bincode/cldr-49/cldr_root", singles, multis);
 }
 
 pub fn write_trie<S1: BuildHasher, S2: BuildHasher>(

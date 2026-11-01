@@ -8,9 +8,8 @@ use std::{hash::Hash, sync::LazyLock};
 pub static KEYS_DUCET: LazyLock<String> =
     LazyLock::new(|| std::fs::read_to_string("unicode-data/18/allkeys.txt").unwrap());
 
-pub static KEYS_CLDR: LazyLock<String> = LazyLock::new(|| {
-    std::fs::read_to_string("unicode-data/cldr-49-beta2/allkeys_CLDR.txt").unwrap()
-});
+pub static KEYS_CLDR: LazyLock<String> =
+    LazyLock::new(|| std::fs::read_to_string("unicode-data/cldr-49/allkeys_CLDR.txt").unwrap());
 
 // This adjustment affects only the low and singles maps
 pub const BUMP: u16 = 1;
@@ -93,7 +92,7 @@ pub fn map_low(keys: Tailoring) {
 
     // Keep diagnostic JSON and generate the Rust array installed in Feruca.
     let path_out = if cldr {
-        "json/cldr-49-beta2/low_cldr.json"
+        "json/cldr-49/low_cldr.json"
     } else {
         "json/18/low.json"
     };

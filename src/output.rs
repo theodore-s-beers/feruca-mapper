@@ -4,12 +4,8 @@ pub fn write_rust(name: &str, source: &str) {
 }
 
 pub fn write_cldr_rust(name: &str, source: &str) {
-    let path = format!("generated/cldr-49-beta2/{name}");
-    write_rust_file(
-        &path,
-        source,
-        "CLDR 49 beta2 (49b50897a6bd3ccec399112f8696cd006f5202c6)",
-    );
+    let path = format!("generated/cldr-49/{name}");
+    write_rust_file(&path, source, "CLDR 49 (release-49)");
 }
 
 fn write_rust_file(path: &str, source: &str, version: &str) {

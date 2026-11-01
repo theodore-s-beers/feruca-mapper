@@ -19,9 +19,9 @@ fn main() {
         "bincode/18",
         "json/18",
         "generated/18",
-        "generated/cldr-49-beta2",
-        "bincode/cldr-49-beta2/tailoring",
-        "json/cldr-49-beta2",
+        "generated/cldr-49",
+        "bincode/cldr-49/tailoring",
+        "json/cldr-49",
     ] {
         std::fs::create_dir_all(path).unwrap();
     }
