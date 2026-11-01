@@ -9,7 +9,7 @@ use std::{collections::HashMap, hash::BuildHasher, sync::LazyLock};
 
 // The output of map_decomps is needed for map_fcd
 static DECOMP: LazyLock<DecompTable> = LazyLock::new(|| {
-    let data = std::fs::read("bincode/18/decomp").unwrap();
+    let data = std::fs::read("binary/18/decomp").unwrap();
     postcard::from_bytes(&data).unwrap()
 });
 
@@ -112,7 +112,7 @@ pub fn map_decomps() {
     // Serialize the table for Feruca using postcard
     let table = build_decomp_table(&canonical);
     let bytes = postcard::to_allocvec(&table).unwrap();
-    std::fs::write("bincode/18/decomp", bytes).unwrap();
+    std::fs::write("binary/18/decomp", bytes).unwrap();
 }
 
 #[must_use]
@@ -221,7 +221,7 @@ pub fn map_fcd() {
     // Serialize table for feruca using postcard
     let table = build_fcd_table(&map);
     let bytes = postcard::to_allocvec(&table).unwrap();
-    std::fs::write("bincode/18/fcd", bytes).unwrap();
+    std::fs::write("binary/18/fcd", bytes).unwrap();
 }
 
 #[must_use]

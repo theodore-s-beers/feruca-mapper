@@ -16,7 +16,7 @@ pub fn map_arabic_script_trie(
     let mut multis = cldr_multis.clone();
     multis.extend(collect_arabic_script_multis());
 
-    write_trie("bincode/cldr-49/tailoring/arabic_script", &singles, &multis);
+    write_trie("binary/cldr-49/tailoring/arabic_script", &singles, &multis);
 }
 
 fn collect_arabic_script_multis() -> FxHashMap<u64, Box<[u32]>> {

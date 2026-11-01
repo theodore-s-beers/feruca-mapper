@@ -56,7 +56,7 @@ pub fn map_arabic_interleaved_trie(
     multis.extend(collect_arabic_interleaved_multis());
 
     write_trie(
-        "bincode/cldr-49/tailoring/arabic_interleaved",
+        "binary/cldr-49/tailoring/arabic_interleaved",
         &singles,
         &multis,
     );

@@ -72,7 +72,7 @@ pub fn map_variable() {
 
     let table = build_variable_table(&set);
     let bytes = postcard::to_allocvec(&table).unwrap();
-    std::fs::write("bincode/18/variable", bytes).unwrap();
+    std::fs::write("binary/18/variable", bytes).unwrap();
 }
 
 #[must_use]
